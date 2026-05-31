@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>PostQuantum.KeyManagement</RootNamespace>
+    <AssemblyName>PostQuantum.KeyManagement</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- ───────────────────────── NuGet package metadata ───────────────────────── -->
+  <PropertyGroup>
+    <PackageId>PostQuantum.KeyManagement</PackageId>
+    <Version>0.2.0-preview.1</Version>
+    <Authors>Paul Clark</Authors>
+    <Company>Systems Librarian</Company>
+    <Product>PostQuantum.KeyManagement</Product>
+    <Description>Clean, high-level key management and rotation for post-quantum-ready encryption in .NET. Provides envelope-encryption abstractions (content keys wrapped by a key-encryption key), a secure local KEK provider backed by Argon2id + AES-256-GCM, and clear extensibility points for cloud KMS providers such as Azure Key Vault and AWS KMS. The natural companion to PostQuantum.FileEncryption and PostQuantum.Jwt.</Description>
+    <PackageTags>post-quantum;pqc;cryptography;key-management;key-rotation;kms;argon2id;envelope-encryption;aes-gcm;security;dek;kek</PackageTags>
+    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Copyright>Copyright (c) Paul Clark</Copyright>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>0.2.0-preview.1: Adds first-class local keyring export/import (LocalKeyringMetadata + LocalContentKeyProvider.ExportMetadata/Import) so multi-KEK rotation survives process restarts; the exported metadata is non-secret and passphrases are supplied at import time via PassphraseResolver. 0.1.0-preview.1: Initial preview — core IContentKeyProvider abstraction, local Argon2id + AES-256-GCM KEK provider with in-process key rotation, and provider extensibility points. See KNOWN-GAPS.md for current limitations.</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <!-- ───────────────────────────── SourceLink / symbols ─────────────────────── -->
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

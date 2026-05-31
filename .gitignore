@@ -1,0 +1,30 @@
+# .NET build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+nuget.config.user
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+coverage*.xml
+coverage*.json
+*.coverage
+
+# Rider / VS / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+.vscode/
+
+# OS noise
+.DS_Store
+Thumbs.db

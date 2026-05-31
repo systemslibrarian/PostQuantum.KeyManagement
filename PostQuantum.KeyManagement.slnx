@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PostQuantum.KeyManagement/PostQuantum.KeyManagement.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PostQuantum.KeyManagement.Tests/PostQuantum.KeyManagement.Tests.csproj" />
+  </Folder>
+</Solution>
