@@ -13,9 +13,19 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
   (`AddPostQuantumKeyManagement`), options binding from `IConfiguration`, an `IKeyringStore`
   abstraction with a built-in atomic `FileKeyringStore`, and a `KeyManagementHealthCheck`. Targets
   net8.0/net9.0/net10.0; no SDK dependencies on the core's runtime path.
-- **Minimal API sample** at `samples/MinimalApi.Sample` showing the DI package in a realistic
-  ASP.NET Core service: envelope-encrypt request payloads, rotate the KEK over HTTP, keyring
-  survives restarts.
+- **Three working samples** under `samples/`:
+  - `MinimalApi.Sample` — ASP.NET Core minimal-API with envelope-encryption endpoints, rotation,
+    and a `/health` check backed by `KeyManagementHealthCheck`.
+  - `WorkerService.Sample` — a .NET worker service with a liveness probe and a scheduled rotation
+    worker that persists the multi-KEK ring through `FileKeyringStore` on every rotation.
+  - `EfCore.Sample` — per-row envelope encryption with EF Core + SQLite. Demonstrates lazy
+    migration: KEK rotation does not invalidate existing rows.
+- **`docs/deployment.md`** — production operational guide: passphrase storage, keyring backup /
+  restore drill, rotation cadence, monitoring, container / Kubernetes notes, and the realities of
+  multi-instance deployments.
+- **`future.md`** — concrete path to cloud KMS providers (Azure Key Vault, AWS KMS),
+  external cryptographic review, and `1.0`, with provisioning scripts and a definition of done for
+  each.
 - **`docs/threat-model.md`** — explicit attacker model, security invariants (I-1…I-10), and
   out-of-scope threats. The companion to `SECURITY.md`.
 - **`docs/versioning.md`** — SemVer policy, wire-format compatibility policy, and the target-framework

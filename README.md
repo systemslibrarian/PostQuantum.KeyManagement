@@ -163,9 +163,13 @@ builder.Services.AddHealthChecks().AddPostQuantumKeyManagement();
 public sealed class SecretsService(IContentKeyProvider keys) { /* ... */ }
 ```
 
-A working end-to-end example lives in [`samples/MinimalApi.Sample`](samples/MinimalApi.Sample) — it
-demonstrates POST/GET endpoints that envelope-encrypt request payloads, a `/rotate` endpoint, and
-the keyring surviving process restarts.
+Three end-to-end samples ship in [`samples/`](samples):
+
+| Sample                                                     | What it shows                                                                 |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [`MinimalApi.Sample`](samples/MinimalApi.Sample)           | ASP.NET Core minimal-API with POST/GET/rotate endpoints + `/health`.          |
+| [`WorkerService.Sample`](samples/WorkerService.Sample)     | A worker service with a liveness probe and a scheduled rotation worker that persists the keyring on every rotation. |
+| [`EfCore.Sample`](samples/EfCore.Sample)                   | Per-row envelope encryption with EF Core + SQLite. Demonstrates that a KEK rotation does **not** invalidate existing rows. |
 
 ## Extending to a cloud KMS
 
@@ -215,7 +219,10 @@ See [`docs/extending-providers.md`](docs/extending-providers.md) for the full wa
 
 For the precise statement of what we defend against and what we don't, see
 [`docs/threat-model.md`](docs/threat-model.md). For our compatibility commitments — API surface,
-wire formats, target frameworks — see [`docs/versioning.md`](docs/versioning.md).
+wire formats, target frameworks — see [`docs/versioning.md`](docs/versioning.md). For the
+production operational checklist — passphrase storage, keyring backups, rotation cadence,
+multi-instance deployments — see [`docs/deployment.md`](docs/deployment.md). The path to cloud KMS
+providers, audit, and `1.0` is laid out in [`future.md`](future.md).
 
 Please report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
 

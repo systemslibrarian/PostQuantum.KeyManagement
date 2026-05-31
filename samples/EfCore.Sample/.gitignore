@@ -1,0 +1,6 @@
+notes.db
+notes.db-journal
+notes.db-shm
+notes.db-wal
+keyring.bin
+*.tmp-*

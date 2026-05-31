@@ -9,5 +9,7 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/MinimalApi.Sample/MinimalApi.Sample.csproj" />
+    <Project Path="samples/WorkerService.Sample/WorkerService.Sample.csproj" />
+    <Project Path="samples/EfCore.Sample/EfCore.Sample.csproj" />
   </Folder>
 </Solution>
