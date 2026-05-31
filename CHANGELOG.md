@@ -4,6 +4,52 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the library uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0-preview.1] — 2026-05-31
+
+This release turns the hardened 0.3 core into a production-shaped preview. Adds the DI
+integration package as a peer NuGet package, three end-to-end samples, full documentation set
+(threat model, versioning policy, deployment guide), and small API refinements that elevate
+day-to-day usability.
+
+### Added
+
+- **Sibling package** `PostQuantum.KeyManagement.Extensions.DependencyInjection` — the idiomatic
+  way to wire the provider into any `Microsoft.Extensions.DependencyInjection` host:
+  - `AddPostQuantumKeyManagement(options => ...)` registers a singleton `IContentKeyProvider`.
+    Idempotent — calling it twice does not double-register.
+  - `KeyManagementOptions` with a `KekWorkFactor` enum mapping to the static `LocalKekOptions`
+    presets. Bindable from `IConfiguration`.
+  - `IKeyringStore` abstraction with a built-in `FileKeyringStore` (atomic temp+rename writes,
+    so a crashed write cannot leave a half-written file).
+  - `KeyManagementHealthCheck` that runs a real wrap → unwrap round-trip, surfaced via
+    `services.AddHealthChecks().AddPostQuantumKeyManagement()`.
+- **Three end-to-end samples** in `samples/`:
+  - `MinimalApi.Sample` — ASP.NET Core minimal-API with envelope-encryption endpoints, rotation,
+    and a `/health` check.
+  - `WorkerService.Sample` — a .NET worker service with a liveness probe and a scheduled
+    rotation worker that persists the keyring on every rotation.
+  - `EfCore.Sample` — per-row envelope encryption with EF Core + SQLite. Demonstrates lazy
+    migration: KEK rotation does not invalidate existing rows.
+- **`TryDecode` overloads** on `WrappedContentKey` and `LocalKeyringMetadata` for exception-free
+  parsing of untrusted input.
+- **Boundary validation**: empty passphrases are rejected with a clear `ArgumentException` at
+  the library boundary, before any cryptographic work runs.
+- **Documentation set**:
+  - `docs/threat-model.md` — attacker model, ten numbered security invariants, out-of-scope
+    threats, and "what is not a vulnerability."
+  - `docs/versioning.md` — SemVer policy, wire-format versioning matrix, API surface
+    guarantees, TFM support matrix.
+  - `docs/deployment.md` — production operational checklist: passphrase storage, keyring
+    backup, rotation cadence, monitoring, multi-instance deployments, disaster recovery.
+- **`future.md`** — concrete plan to ship Azure Key Vault and AWS KMS providers, commission an
+  external review, and cut `1.0`, with provisioning scripts and definition-of-done for each.
+
+### Changed
+
+- **NuGet metadata polish.** Both packages now carry stronger `Description`, `Title`,
+  `PackageTags`, and `PackageReleaseNotes`; the core declares `<IsAotCompatible>true</IsAotCompatible>`.
+- **README** rewritten to lead with concrete value, a 60-second demo, and a local-vs-cloud table.
+
 ## [0.3.0-preview.1] — 2026-05-31
 
 ### Added

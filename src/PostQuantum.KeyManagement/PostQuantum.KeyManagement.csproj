@@ -5,17 +5,19 @@
     <RootNamespace>PostQuantum.KeyManagement</RootNamespace>
     <AssemblyName>PostQuantum.KeyManagement</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <!-- ───────────────────────── NuGet package metadata ───────────────────────── -->
   <PropertyGroup>
     <PackageId>PostQuantum.KeyManagement</PackageId>
-    <Version>0.3.0-preview.1</Version>
+    <Version>0.4.0-preview.1</Version>
     <Authors>Paul Clark</Authors>
     <Company>Systems Librarian</Company>
     <Product>PostQuantum.KeyManagement</Product>
-    <Description>Clean, high-level key management and rotation for post-quantum-ready encryption in .NET. Provides envelope-encryption abstractions (content keys wrapped by a key-encryption key), a secure local KEK provider backed by Argon2id + AES-256-GCM, and clear extensibility points for cloud KMS providers such as Azure Key Vault and AWS KMS. The natural companion to PostQuantum.FileEncryption and PostQuantum.Jwt.</Description>
-    <PackageTags>post-quantum;pqc;cryptography;key-management;key-rotation;kms;argon2id;envelope-encryption;aes-gcm;security;dek;kek</PackageTags>
+    <Title>PostQuantum.KeyManagement — envelope encryption + key rotation for .NET</Title>
+    <Description>Clean, high-level key management and rotation for post-quantum-ready encryption in .NET. Implements the envelope-encryption pattern (256-bit content keys wrapped by a key-encryption key) with a secure local KEK provider backed by Argon2id + AES-256-GCM, full thread-safety, hostile-input-resistant token parsers, an HMAC-SHA256 keyring verifier for early passphrase detection, and a tiny extension point so cloud KMS providers (Azure Key Vault, AWS KMS, Google Cloud KMS, PKCS#11/HSMs) plug in without disturbing application code. The natural companion to PostQuantum.FileEncryption and PostQuantum.Jwt. See KNOWN-GAPS.md and docs/threat-model.md for honest, explicit limits.</Description>
+    <PackageTags>post-quantum;pqc;cryptography;key-management;key-rotation;kms;argon2id;envelope-encryption;aes-gcm;security;dek;kek;hsm</PackageTags>
     <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -23,7 +25,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) Paul Clark</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>0.3.0-preview.1: Hardens the library for production. Adds an HMAC-SHA256 per-KEK verifier so LocalContentKeyProvider.Import detects a wrong passphrase immediately instead of as a later AuthenticationTagMismatch (keyring format v2; v1 tokens still decode). Documents and enforces full thread-safety on LocalContentKeyProvider: rotation can no longer dispose a KEK in use; Rotate now throws on a key-id collision instead of silently replacing. Token parsers are hardened against integer-overflow length prefixes and oversized inputs (every length-prefixed field is capped, KEK count is capped). Unwrap now rejects payload lengths other than the 32-byte content-key size. Adds LocalKekOptions presets (Interactive / Moderate / Sensitive matching RFC 9106 §4, and LowMemory matching the OWASP minimum). 0.2.0-preview.1: First-class local keyring export/import so multi-KEK rotation survives process restarts. 0.1.0-preview.1: Initial preview — core IContentKeyProvider abstraction, local Argon2id + AES-256-GCM KEK provider with in-process key rotation, and provider extensibility points. See CHANGELOG.md and KNOWN-GAPS.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.4.0-preview.1: Production-shaped preview. Adds the sibling PostQuantum.KeyManagement.Extensions.DependencyInjection package (one-line AddPostQuantumKeyManagement, an IKeyringStore abstraction with an atomic FileKeyringStore, and KeyManagementHealthCheck). Adds three end-to-end samples (Minimal API, Worker Service with scheduled rotation, EF Core with per-row envelope encryption that survives KEK rotation). Adds TryDecode overloads on WrappedContentKey and LocalKeyringMetadata for untrusted input. Adds boundary validation rejecting empty passphrases with a clear ArgumentException before any cryptographic work. Adds docs/threat-model.md (ten numbered security invariants), docs/versioning.md (SemVer and wire-format policy), and docs/deployment.md (production operational checklist). Multi-targets net8.0/net9.0/net10.0 with deterministic builds and SourceLink. Full release notes in CHANGELOG.md; the path to cloud KMS providers, external review, and 1.0 is in future.md.</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- ───────────────────────────── SourceLink / symbols ─────────────────────── -->

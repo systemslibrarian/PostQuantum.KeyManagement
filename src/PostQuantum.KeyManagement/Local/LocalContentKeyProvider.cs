@@ -359,6 +359,14 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
 
     private static LocalKek DeriveKek(ReadOnlySpan<char> passphrase, byte[] salt, LocalKekOptions options)
     {
+        if (passphrase.IsEmpty)
+        {
+            throw new ArgumentException(
+                "Passphrase must not be empty. An empty passphrase offers no entropy and is refused " +
+                "by the Argon2id derivation; this check makes the failure mode explicit.",
+                nameof(passphrase));
+        }
+
         // Convert the passphrase to an exact-length byte array we can zero after derivation.
         int byteCount = Encoding.UTF8.GetByteCount(passphrase);
         byte[] password = new byte[byteCount];

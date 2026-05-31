@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using PostQuantum.KeyManagement.Local;
 
@@ -35,7 +36,7 @@ public static class KeyManagementServiceCollectionExtensions
         if (!string.IsNullOrWhiteSpace(snapshot.KeyringPath))
         {
             string path = snapshot.KeyringPath!;
-            services.AddSingleton<IKeyringStore>(new FileKeyringStore(path));
+            services.TryAddSingleton<IKeyringStore>(new FileKeyringStore(path));
         }
 
         return AddProviderCore(services);
@@ -61,7 +62,7 @@ public static class KeyManagementServiceCollectionExtensions
 
     private static IServiceCollection AddProviderCore(IServiceCollection services)
     {
-        services.AddSingleton<IContentKeyProvider>(static sp =>
+        services.TryAddSingleton<IContentKeyProvider>(static sp =>
         {
             KeyManagementOptions options = sp.GetRequiredService<IOptions<KeyManagementOptions>>().Value;
             if (string.IsNullOrEmpty(options.Passphrase))

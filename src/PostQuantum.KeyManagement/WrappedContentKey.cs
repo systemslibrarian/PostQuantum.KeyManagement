@@ -55,10 +55,45 @@ public sealed record WrappedContentKey
 
     /// <summary>Decodes a token produced by <see cref="Encode"/> back into a <see cref="WrappedContentKey"/>.</summary>
     /// <exception cref="FormatException">The token is malformed or uses an unsupported format version.</exception>
+    /// <exception cref="ArgumentException"><paramref name="token"/> is null or empty.</exception>
     public static WrappedContentKey Decode(string token)
     {
         ArgumentException.ThrowIfNullOrEmpty(token);
+        return DecodeCore(token);
+    }
 
+    /// <summary>
+    /// Attempts to decode a token produced by <see cref="Encode"/>. Returns <see langword="true"/> on
+    /// success and assigns the result; returns <see langword="false"/> on any malformed input
+    /// without throwing.
+    /// </summary>
+    /// <remarks>
+    /// Use this overload when the token comes from an untrusted source (user input, network
+    /// payload) and exception-driven control flow would be inappropriate. The exception-throwing
+    /// <see cref="Decode"/> remains the right choice when a malformed token is a programmer error.
+    /// </remarks>
+    public static bool TryDecode(string? token, out WrappedContentKey? result)
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            result = null;
+            return false;
+        }
+
+        try
+        {
+            result = DecodeCore(token);
+            return true;
+        }
+        catch (FormatException)
+        {
+            result = null;
+            return false;
+        }
+    }
+
+    private static WrappedContentKey DecodeCore(string token)
+    {
         byte[] data = PortableEncoding.FromBase64Url(token);
         int offset = 0;
 

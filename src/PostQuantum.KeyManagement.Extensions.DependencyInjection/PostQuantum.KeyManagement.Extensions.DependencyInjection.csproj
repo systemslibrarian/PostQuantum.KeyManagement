@@ -10,12 +10,13 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.KeyManagement.Extensions.DependencyInjection</PackageId>
-    <Version>0.3.0-preview.1</Version>
+    <Version>0.4.0-preview.1</Version>
     <Authors>Paul Clark</Authors>
     <Company>Systems Librarian</Company>
     <Product>PostQuantum.KeyManagement</Product>
-    <Description>ASP.NET Core / Microsoft.Extensions.DependencyInjection integration for PostQuantum.KeyManagement. Adds AddPostQuantumKeyManagement with options binding, a pluggable IKeyringStore (with a built-in FileKeyringStore that writes atomically), and a basic health check so an IContentKeyProvider can be wired into a host with one line.</Description>
-    <PackageTags>post-quantum;key-management;envelope-encryption;aspnetcore;dependency-injection;options;health-checks</PackageTags>
+    <Title>PostQuantum.KeyManagement — DI integration for ASP.NET Core and hosts</Title>
+    <Description>Microsoft.Extensions.DependencyInjection integration for PostQuantum.KeyManagement. One-line AddPostQuantumKeyManagement wires an IContentKeyProvider singleton with options bound from IConfiguration; the optional KeyringPath drops in a built-in FileKeyringStore (atomic temp+rename) so the multi-KEK ring survives restarts; AddPostQuantumKeyManagement() on IHealthChecksBuilder registers a real wrap/unwrap round-trip as a readiness probe. The idiomatic way to use PostQuantum.KeyManagement from ASP.NET Core minimal APIs, worker services, and Blazor.</Description>
+    <PackageTags>post-quantum;key-management;envelope-encryption;aspnetcore;dependency-injection;options;health-checks;ihealthcheck;hosting</PackageTags>
     <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -23,7 +24,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) Paul Clark</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>0.3.0-preview.1: Initial preview. Adds AddPostQuantumKeyManagement for Microsoft.Extensions.DependencyInjection hosts, an IKeyringStore abstraction with a built-in atomic FileKeyringStore, and a KeyManagementHealthCheck. Designed to make the local provider usable from ASP.NET Core minimal APIs, worker services, and Blazor with one configuration line.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.4.0-preview.1: First preview as a sibling of the 0.4 core. Adds AddPostQuantumKeyManagement for Microsoft.Extensions.DependencyInjection hosts (idempotent — calling it twice does not double-register), an IKeyringStore abstraction with a built-in atomic FileKeyringStore, and KeyManagementHealthCheck wired through IHealthChecksBuilder.AddPostQuantumKeyManagement(). Designed to make the local provider usable from ASP.NET Core minimal APIs, worker services, and Blazor with one configuration line. See samples/MinimalApi.Sample, samples/WorkerService.Sample, and samples/EfCore.Sample for end-to-end usage.</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- SourceLink / symbols -->
