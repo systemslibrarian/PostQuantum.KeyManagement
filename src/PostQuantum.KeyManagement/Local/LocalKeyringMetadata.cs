@@ -8,13 +8,32 @@ namespace PostQuantum.KeyManagement.Local;
 /// passphrases (supplied separately at import time), it reconstructs the provider after a restart.
 /// </summary>
 /// <remarks>
-/// This blob contains salts and Argon2id cost parameters only — never key material or passphrases —
-/// so it is safe to store alongside your data. Recovering usable keys still requires the original
-/// passphrases via a <see cref="PassphraseResolver"/>.
+/// <para>
+/// This blob contains salts, Argon2id cost parameters, and (in v2 tokens) a short non-secret KEK
+/// verifier — never key material or passphrases — so it is safe to store alongside your data.
+/// Recovering usable keys still requires the original passphrases via a <see cref="PassphraseResolver"/>.
+/// </para>
+/// <para>
+/// <b>Format versions:</b> v0.3 of the library writes <see cref="CurrentFormatVersion"/> (currently 2)
+/// tokens that carry a per-KEK verifier so wrong passphrases are caught at import. v1 tokens
+/// produced by earlier versions still decode for backward compatibility — they simply do not
+/// surface the import-time check; a wrong passphrase will still be rejected at first unwrap by
+/// AES-GCM authentication.
+/// </para>
 /// </remarks>
 public sealed record LocalKeyringMetadata
 {
-    private const byte FormatVersion = 1;
+    /// <summary>The format version written by <see cref="Encode"/> on this library version.</summary>
+    public const byte CurrentFormatVersion = 2;
+
+    private const byte LegacyFormatVersion = 1;
+
+    /// <summary>
+    /// Safety ceiling on the number of KEKs a single token may declare. Production deployments use
+    /// a small handful of KEKs; this cap exists purely to defend against malformed input that would
+    /// otherwise force a giant allocation.
+    /// </summary>
+    public const int MaxKekCount = 1024;
 
     /// <summary>The <see cref="LocalKekMetadata.KeyId"/> of the KEK that was active when exported.</summary>
     public required string ActiveKeyId { get; init; }
@@ -24,12 +43,12 @@ public sealed record LocalKeyringMetadata
 
     /// <summary>
     /// Encodes this keyring metadata into a compact, URL-safe Base64 token. Round-trips losslessly
-    /// through <see cref="Decode"/>.
+    /// through <see cref="Decode"/>. Always writes the current format version.
     /// </summary>
     public string Encode()
     {
         using var buffer = new MemoryStream();
-        buffer.WriteByte(FormatVersion);
+        buffer.WriteByte(CurrentFormatVersion);
         PortableEncoding.WriteString(buffer, ActiveKeyId);
         PortableEncoding.WriteInt32(buffer, Keks.Count);
         foreach (LocalKekMetadata kek in Keks)
@@ -39,13 +58,14 @@ public sealed record LocalKeyringMetadata
             PortableEncoding.WriteInt32(buffer, kek.DegreeOfParallelism);
             PortableEncoding.WriteInt32(buffer, kek.MemorySizeInKib);
             PortableEncoding.WriteInt32(buffer, kek.Iterations);
+            PortableEncoding.WriteBytes(buffer, kek.Verifier ?? []);
         }
 
         return PortableEncoding.ToBase64Url(buffer.ToArray());
     }
 
     /// <summary>Decodes a token produced by <see cref="Encode"/> back into <see cref="LocalKeyringMetadata"/>.</summary>
-    /// <exception cref="FormatException">The token is malformed or uses an unsupported format version.</exception>
+    /// <exception cref="FormatException">The token is malformed, oversized, or uses an unsupported format version.</exception>
     public static LocalKeyringMetadata Decode(string token)
     {
         ArgumentException.ThrowIfNullOrEmpty(token);
@@ -54,28 +74,41 @@ public sealed record LocalKeyringMetadata
         int offset = 0;
 
         byte version = PortableEncoding.ReadByte(data, ref offset);
-        if (version != FormatVersion)
+        if (version is not (LegacyFormatVersion or CurrentFormatVersion))
         {
             throw new FormatException($"Unsupported keyring-metadata format version: {version}.");
         }
 
         string activeKeyId = PortableEncoding.ReadString(data, ref offset);
         int count = PortableEncoding.ReadInt32(data, ref offset);
-        if (count < 0)
+        if (count < 0 || count > MaxKekCount)
         {
-            throw new FormatException("Corrupt KEK count in keyring-metadata token.");
+            throw new FormatException("Corrupt or oversized KEK count in keyring-metadata token.");
         }
 
-        var keks = new List<LocalKekMetadata>(Math.Min(count, 64));
+        var keks = new List<LocalKekMetadata>(count);
         for (int i = 0; i < count; i++)
         {
+            string keyId = PortableEncoding.ReadString(data, ref offset);
+            byte[] salt = PortableEncoding.ReadBytes(data, ref offset);
+            int parallelism = PortableEncoding.ReadInt32(data, ref offset);
+            int memory = PortableEncoding.ReadInt32(data, ref offset);
+            int iterations = PortableEncoding.ReadInt32(data, ref offset);
+            byte[]? verifier = null;
+            if (version >= CurrentFormatVersion)
+            {
+                byte[] raw = PortableEncoding.ReadBytes(data, ref offset);
+                verifier = raw.Length == 0 ? null : raw;
+            }
+
             keks.Add(new LocalKekMetadata
             {
-                KeyId = PortableEncoding.ReadString(data, ref offset),
-                Salt = PortableEncoding.ReadBytes(data, ref offset),
-                DegreeOfParallelism = PortableEncoding.ReadInt32(data, ref offset),
-                MemorySizeInKib = PortableEncoding.ReadInt32(data, ref offset),
-                Iterations = PortableEncoding.ReadInt32(data, ref offset),
+                KeyId = keyId,
+                Salt = salt,
+                DegreeOfParallelism = parallelism,
+                MemorySizeInKib = memory,
+                Iterations = iterations,
+                Verifier = verifier,
             });
         }
 

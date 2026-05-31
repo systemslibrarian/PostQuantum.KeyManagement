@@ -15,9 +15,10 @@ same code runs against a local passphrase today and a cloud HSM tomorrow.
 It is the natural companion to [`PostQuantum.FileEncryption`](https://github.com/systemslibrarian),
 [`PostQuantum.Jwt`](https://github.com/systemslibrarian), and the other `PostQuantum.*` libraries.
 
-> ⚠️ **Preview (`0.2.0-preview.1`).** The API surface is small and may still change before `1.0`.
+> ⚠️ **Preview (`0.3.0-preview.1`).** The API surface is small and may still change before `1.0`.
 > Please read [KNOWN-GAPS.md](KNOWN-GAPS.md) before relying on it — it is deliberately blunt about
-> what this library does and does **not** yet do.
+> what this library does and does **not** yet do. See [CHANGELOG.md](CHANGELOG.md) for what landed
+> in each release.
 
 ---
 
@@ -101,8 +102,9 @@ WrappedContentKey migrated = await keys.RewrapAsync(wrapped);
 ## Persisting the keyring across restarts
 
 After one or more rotations the provider holds several KEKs. Export the ring's **non-secret**
-structure (salts + Argon2id parameters + which KEK is active) and rebuild it later by supplying the
-passphrases — the export never contains key material or passphrases.
+structure (salts + Argon2id parameters + a per-KEK integrity verifier + which KEK is active) and
+rebuild it later by supplying the passphrases — the export never contains key material or
+passphrases.
 
 ```csharp
 // Before shutdown: persist the keyring structure (safe to store next to your data).
@@ -115,6 +117,28 @@ PassphraseResolver passphrases = keyId => LookUpPassphraseFor(keyId);
 using var keys = LocalContentKeyProvider.Import(metadata, passphrases);
 // Every KEK is back: keys wrapped under rotated-out KEKs still unwrap, and the active KEK is restored.
 ```
+
+A wrong passphrase is caught at import (constant-time HMAC-SHA256 verifier) and surfaces as
+`InvalidOperationException` with the offending key id — not as a later
+`AuthenticationTagMismatchException` at first unwrap.
+
+## Tuning the KEK work factor
+
+`LocalKekOptions` ships with presets aligned to RFC 9106 and OWASP:
+
+| Preset       | Memory | Iterations | Parallelism | When to use                                   |
+| ------------ | ------ | ---------- | ----------- | --------------------------------------------- |
+| `Interactive`| 64 MiB | 3          | 4           | server-side default — RFC 9106 §4 "second"    |
+| `Moderate`   | 256 MiB| 4          | 4           | background jobs, admin operations             |
+| `Sensitive`  | 2 GiB  | 1          | 4           | long-lived master KEKs — RFC 9106 §4 "first"  |
+| `LowMemory`  | 19 MiB | 2          | 1           | constrained hosts (CI, edge) — OWASP minimum  |
+
+```csharp
+using var keys = LocalContentKeyProvider.Create("strong passphrase", LocalKekOptions.Sensitive);
+```
+
+The instance defaults match `Interactive`. Whatever you pick gets recorded per-KEK in the exported
+metadata, so future rebuilds reproduce the exact same KEK.
 
 ## Extending to a cloud KMS
 
@@ -155,14 +179,23 @@ See [`docs/extending-providers.md`](docs/extending-providers.md) for the full wa
   quantum-resistant by key size. This library does **not yet** add a post-quantum *asymmetric* KEM
   (e.g. ML-KEM) for key wrapping — that, and hybrid wrapping, are tracked in
   [KNOWN-GAPS.md](KNOWN-GAPS.md). We would rather under-claim than overstate.
+- **Thread-safety:** `LocalContentKeyProvider` is safe for concurrent use. Rotation, wrap, and
+  unwrap serialise on a private lock so a rotating thread cannot dispose a KEK that another thread
+  is using.
+- **Defensive parsing:** every token decoder uses overflow-safe length arithmetic and caps fields
+  at 1 MiB; the keyring decoder caps the number of KEKs. A malicious token cannot trigger huge
+  allocations or out-of-bounds reads.
 
 Please report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-`0.2.0-preview.1` — the core abstraction, the local provider, rotation, and **keyring
-export/import** (multi-KEK rotation now survives process restarts). Cloud providers and a
-post-quantum asymmetric wrapping layer are next; see the roadmap in [KNOWN-GAPS.md](KNOWN-GAPS.md).
+`0.3.0-preview.1` — production-hardened preview. Adds an HMAC-SHA256 per-KEK verifier (wrong
+passphrases fail at import, not at first unwrap), full thread-safety on `LocalContentKeyProvider`,
+overflow-safe token parsing with allocation caps, `LocalKekOptions` presets aligned to RFC 9106 /
+OWASP, and a defensive content-key length check on unwrap. See [CHANGELOG.md](CHANGELOG.md) for the
+full list; cloud providers and a post-quantum asymmetric wrapping layer are next on the roadmap in
+[KNOWN-GAPS.md](KNOWN-GAPS.md).
 
 ## Building from source
 

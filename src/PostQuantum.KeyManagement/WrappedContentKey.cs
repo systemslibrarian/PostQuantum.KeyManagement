@@ -6,6 +6,19 @@ namespace PostQuantum.KeyManagement;
 /// The encrypted ("wrapped") form of a content key, plus the routing metadata required to unwrap
 /// it. Contains no plaintext key material and is safe to persist next to ciphertext.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The <see cref="Ciphertext"/> property carries a provider-specific blob (for the local provider:
+/// <c>nonce || tag || ciphertext</c>). Treat the array as immutable; the library does not defensively
+/// copy it on every operation. <see cref="Encode"/> / <see cref="Decode"/> always allocate fresh
+/// arrays, so values round-tripped through a token are safe to retain.
+/// </para>
+/// <para>
+/// <see cref="Decode"/> defends against malformed tokens by capping every length-prefixed field at
+/// <see cref="PortableEncoding.MaxFieldLength"/> and using overflow-safe bounds arithmetic, so a
+/// hostile token cannot trigger huge allocations or out-of-bounds reads.
+/// </para>
+/// </remarks>
 public sealed record WrappedContentKey
 {
     private const byte FormatVersion = 1;

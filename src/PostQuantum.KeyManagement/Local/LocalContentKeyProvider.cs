@@ -18,9 +18,18 @@ namespace PostQuantum.KeyManagement.Local;
 /// <see cref="ContentKeyProvider.RewrapAsync"/> can migrate them to the new KEK over time.
 /// </para>
 /// <para>
-/// <b>Persistence is the caller's responsibility.</b> To re-derive a KEK in a later process you must
-/// store its <see cref="ActiveSalt"/> (and any non-default <see cref="LocalKekOptions"/>) and supply
-/// the same passphrase. The salt is not a secret; the passphrase is. See KNOWN-GAPS.md.
+/// <b>Persistence:</b> the in-memory key ring can be exported via <see cref="ExportMetadata"/>
+/// as a non-secret <see cref="LocalKeyringMetadata"/> and reconstructed in a later process with
+/// <see cref="Import"/>. The export carries each KEK's salt, Argon2id parameters, and a 16-byte
+/// HMAC-SHA256 verifier; the verifier lets <see cref="Import"/> detect a wrong passphrase
+/// immediately instead of as a delayed <see cref="AuthenticationTagMismatchException"/> at first
+/// unwrap.
+/// </para>
+/// <para>
+/// <b>Thread-safety:</b> all members are safe to invoke concurrently from multiple threads.
+/// Wrap/unwrap operations and <see cref="Rotate(System.ReadOnlySpan{char},LocalKekOptions?)"/>
+/// serialise on a private lock so a rotation cannot dispose a KEK that another thread is using.
+/// Calls do not block on cancellation tokens or on user code.
 /// </para>
 /// </remarks>
 public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
@@ -32,6 +41,7 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     private const int TagSizeInBytes = 16;
 
     private readonly Dictionary<string, LocalKek> _keyRing;
+    private readonly object _sync = new();
     private string _activeKeyId;
     private bool _disposed;
 
@@ -54,8 +64,11 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     {
         get
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            return _activeKeyId;
+            lock (_sync)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                return _activeKeyId;
+            }
         }
     }
 
@@ -67,8 +80,11 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     {
         get
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            return _keyRing[_activeKeyId].Salt;
+            lock (_sync)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                return _keyRing[_activeKeyId].Salt;
+            }
         }
     }
 
@@ -114,46 +130,69 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     /// adds it to the key ring, and makes it the active KEK. Previous KEKs remain available for unwrapping.
     /// </summary>
     /// <returns>The identifier of the new active KEK.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The derived key id collides with an existing KEK in the ring. This signals that the supplied
+    /// salt was already in use (almost always a caller bug — salts are meant to be unique per KEK);
+    /// silently replacing the existing KEK would lose the ability to unwrap keys made under it.
+    /// </exception>
     public string Rotate(ReadOnlySpan<char> newPassphrase, ReadOnlySpan<byte> salt, LocalKekOptions? options = null)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         options ??= new LocalKekOptions();
         options.Validate();
 
         LocalKek kek = DeriveKek(newPassphrase, salt.ToArray(), options);
-        if (_keyRing.TryGetValue(kek.KeyId, out LocalKek? existing) && !ReferenceEquals(existing, kek))
+        try
         {
-            existing.Dispose();
-        }
+            lock (_sync)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_keyRing.ContainsKey(kek.KeyId))
+                {
+                    throw new InvalidOperationException(
+                        $"A KEK with id '{kek.KeyId}' is already present in the keyring; refusing to rotate over it. " +
+                        "Use a fresh salt (the default overload generates one for you).");
+                }
 
-        _keyRing[kek.KeyId] = kek;
-        _activeKeyId = kek.KeyId;
-        return kek.KeyId;
+                _keyRing[kek.KeyId] = kek;
+                _activeKeyId = kek.KeyId;
+                kek = null!; // ownership transferred
+                return _activeKeyId;
+            }
+        }
+        finally
+        {
+            kek?.Dispose();
+        }
     }
 
     /// <summary>
-    /// Exports the non-secret structure of the entire key ring — every KEK's salt and Argon2id cost
-    /// parameters plus the active KEK id. Persist the result (optionally via
-    /// <see cref="LocalKeyringMetadata.Encode"/>) and pair it with the passphrases at import time to
-    /// reconstruct this provider in a later process. The export contains no key material or passphrases.
+    /// Exports the non-secret structure of the entire key ring — every KEK's salt, Argon2id cost
+    /// parameters, and a 16-byte HMAC-SHA256 verifier, plus the active KEK id. Persist the result
+    /// (optionally via <see cref="LocalKeyringMetadata.Encode"/>) and pair it with the passphrases at
+    /// import time to reconstruct this provider in a later process. The export contains no key
+    /// material or passphrases.
     /// </summary>
     public LocalKeyringMetadata ExportMetadata()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
-        List<LocalKekMetadata> keks = _keyRing.Values
-            .OrderBy(kek => kek.KeyId, StringComparer.Ordinal)
-            .Select(kek => new LocalKekMetadata
-            {
-                KeyId = kek.KeyId,
-                Salt = kek.Salt.ToArray(),
-                DegreeOfParallelism = kek.DegreeOfParallelism,
-                MemorySizeInKib = kek.MemorySizeInKib,
-                Iterations = kek.Iterations,
-            })
-            .ToList();
+            List<LocalKekMetadata> keks = _keyRing.Values
+                .OrderBy(kek => kek.KeyId, StringComparer.Ordinal)
+                .Select(kek => new LocalKekMetadata
+                {
+                    KeyId = kek.KeyId,
+                    Salt = kek.Salt.AsSpan().ToArray(),
+                    DegreeOfParallelism = kek.DegreeOfParallelism,
+                    MemorySizeInKib = kek.MemorySizeInKib,
+                    Iterations = kek.Iterations,
+                    Verifier = kek.Verifier.AsSpan().ToArray(),
+                })
+                .ToList();
 
-        return new LocalKeyringMetadata { ActiveKeyId = _activeKeyId, Keks = keks };
+            return new LocalKeyringMetadata { ActiveKeyId = _activeKeyId, Keks = keks };
+        }
     }
 
     /// <summary>
@@ -163,7 +202,11 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     /// <param name="metadata">Keyring metadata produced by <see cref="ExportMetadata"/>.</param>
     /// <param name="passphraseResolver">Supplies the passphrase for each KEK, keyed by its id.</param>
     /// <exception cref="ArgumentException">The metadata contains no KEKs.</exception>
-    /// <exception cref="InvalidOperationException">A salt is corrupt, or the active KEK is absent from the ring.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// A salt is corrupt, the active KEK is absent from the ring, or — when the metadata carries a
+    /// verifier — the resolved passphrase does not match the one used at export. The verifier check
+    /// is constant-time.
+    /// </exception>
     public static LocalContentKeyProvider Import(LocalKeyringMetadata metadata, PassphraseResolver passphraseResolver)
     {
         ArgumentNullException.ThrowIfNull(metadata);
@@ -182,16 +225,28 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
                 LocalKekOptions options = kekMetadata.ToOptions();
                 options.Validate();
 
-                LocalKek kek = DeriveKek(passphraseResolver(kekMetadata.KeyId), kekMetadata.Salt.ToArray(), options);
+                LocalKek kek = DeriveKek(passphraseResolver(kekMetadata.KeyId), kekMetadata.Salt.AsSpan().ToArray(), options);
 
                 // The key id is a function of the salt, so a mismatch means the metadata's salt and id
-                // disagree — i.e. the metadata is corrupt. (Passphrase correctness is verified later, at
-                // unwrap time, by AES-GCM authentication.)
+                // disagree — i.e. the metadata is corrupt.
                 if (!string.Equals(kek.KeyId, kekMetadata.KeyId, StringComparison.Ordinal))
                 {
                     kek.Dispose();
                     throw new InvalidOperationException(
                         $"Re-derived key id '{kek.KeyId}' does not match metadata key id '{kekMetadata.KeyId}'; the salt is corrupt.");
+                }
+
+                // If a verifier was persisted (v2 tokens), compare it in constant time. A mismatch
+                // means the resolved passphrase is wrong; fail fast with a clear message instead of
+                // surfacing it later as an AuthenticationTagMismatchException at first unwrap.
+                if (kekMetadata.Verifier is { Length: > 0 } expected)
+                {
+                    if (!CryptographicOperations.FixedTimeEquals(expected, kek.Verifier))
+                    {
+                        kek.Dispose();
+                        throw new InvalidOperationException(
+                            $"Verifier mismatch for KEK '{kekMetadata.KeyId}': the supplied passphrase does not match the one used at export.");
+                    }
                 }
 
                 if (keyRing.TryGetValue(kek.KeyId, out LocalKek? duplicate))
@@ -224,10 +279,7 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     /// <inheritdoc />
     protected override ValueTask<byte[]> WrapKeyAsync(string keyId, ReadOnlyMemory<byte> contentKey, CancellationToken cancellationToken)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
-
-        LocalKek kek = GetKek(keyId);
 
         // Layout: nonce (12) || tag (16) || ciphertext (== contentKey length).
         byte[] blob = new byte[NonceSizeInBytes + TagSizeInBytes + contentKey.Length];
@@ -236,8 +288,14 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
         Span<byte> ciphertext = blob.AsSpan(NonceSizeInBytes + TagSizeInBytes);
 
         RandomNumberGenerator.Fill(nonce);
-        using var aes = new AesGcm(kek.Key, TagSizeInBytes);
-        aes.Encrypt(nonce, contentKey.Span, ciphertext, tag);
+
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            LocalKek kek = GetKek(keyId);
+            using var aes = new AesGcm(kek.Key, TagSizeInBytes);
+            aes.Encrypt(nonce, contentKey.Span, ciphertext, tag);
+        }
 
         return new ValueTask<byte[]>(blob);
     }
@@ -245,25 +303,39 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     /// <inheritdoc />
     protected override ValueTask<byte[]> UnwrapKeyAsync(WrappedContentKey wrappedKey, CancellationToken cancellationToken)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
 
-        LocalKek kek = GetKek(wrappedKey.KeyId);
         byte[] blob = wrappedKey.Ciphertext;
         if (blob.Length < NonceSizeInBytes + TagSizeInBytes)
         {
             throw new CryptographicException("Wrapped key blob is too short to be valid.");
         }
 
+        int plaintextLength = blob.Length - NonceSizeInBytes - TagSizeInBytes;
+
+        // The base class always wraps 32-byte DEKs. A blob whose payload is a different length is
+        // either corrupt or produced by a foreign system; refusing it here makes the failure mode
+        // clear ("malformed blob") rather than surfacing as a downstream caller bug.
+        if (plaintextLength != ContentKeySizeInBytes)
+        {
+            throw new CryptographicException(
+                $"Wrapped key payload is {plaintextLength} bytes; expected {ContentKeySizeInBytes}.");
+        }
+
         ReadOnlySpan<byte> nonce = blob.AsSpan(0, NonceSizeInBytes);
         ReadOnlySpan<byte> tag = blob.AsSpan(NonceSizeInBytes, TagSizeInBytes);
         ReadOnlySpan<byte> ciphertext = blob.AsSpan(NonceSizeInBytes + TagSizeInBytes);
 
-        byte[] plaintext = new byte[ciphertext.Length];
+        byte[] plaintext = new byte[plaintextLength];
         try
         {
-            using var aes = new AesGcm(kek.Key, TagSizeInBytes);
-            aes.Decrypt(nonce, ciphertext, tag, plaintext);
+            lock (_sync)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                LocalKek kek = GetKek(wrappedKey.KeyId);
+                using var aes = new AesGcm(kek.Key, TagSizeInBytes);
+                aes.Decrypt(nonce, ciphertext, tag, plaintext);
+            }
         }
         catch
         {
@@ -321,17 +393,20 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
     /// <summary>Zeroes and releases every KEK held in the key ring.</summary>
     public void Dispose()
     {
-        if (_disposed)
+        lock (_sync)
         {
-            return;
-        }
+            if (_disposed)
+            {
+                return;
+            }
 
-        foreach (LocalKek kek in _keyRing.Values)
-        {
-            kek.Dispose();
-        }
+            foreach (LocalKek kek in _keyRing.Values)
+            {
+                kek.Dispose();
+            }
 
-        _keyRing.Clear();
-        _disposed = true;
+            _keyRing.Clear();
+            _disposed = true;
+        }
     }
 }

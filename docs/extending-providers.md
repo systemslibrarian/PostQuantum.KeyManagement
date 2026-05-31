@@ -99,6 +99,17 @@ Reuse the shape of the existing suite (`tests/`):
 - **Rotation:** wrap under KEK A, switch active to KEK B, confirm A still unwraps, then `RewrapAsync`
   and confirm the content key is unchanged.
 - **Tamper:** a corrupted `Ciphertext` must fail to unwrap, not return garbage.
+- **Foreign keys:** a wrapped key whose `KeyId` is unknown to your backend must throw, not silently
+  fall back to another KEK.
+- **Concurrency:** wrap and unwrap from many threads at once; if your provider supports in-process
+  rotation, prove that a rotation cannot break an in-flight unwrap.
+
+## Versioning your wire format
+
+If you pack any header bytes inside `Ciphertext`, write a single-byte format version first and
+reject unknown versions in `UnwrapKeyAsync`. The library does this with its own tokens — see
+`Internal/PortableEncoding`, which uses overflow-safe length arithmetic and caps every
+length-prefixed field. Reuse that pattern; do not invent ad-hoc length parsing from scratch.
 
 ---
 

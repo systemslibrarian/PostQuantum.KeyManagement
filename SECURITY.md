@@ -23,10 +23,10 @@ always triaged first.
 While in `0.x` preview, only the **latest released version** receives security fixes. There is no
 back-porting to older previews before `1.0`.
 
-| Version          | Supported |
-| ---------------- | --------- |
-| `0.1.0-preview.*`| ✅        |
-| older            | ❌        |
+| Version           | Supported |
+| ----------------- | --------- |
+| `0.3.0-preview.*` | ✅        |
+| older previews    | ❌        |
 
 ## What this library protects
 
@@ -35,7 +35,14 @@ back-porting to older previews before `1.0`.
   attacker-influenced key material.
 - **Strong content keys.** 256-bit keys from the platform CSPRNG (`RandomNumberGenerator`).
 - **Brute-force resistance for passphrases.** The local provider stretches passphrases with Argon2id
-  (memory-hard), with tunable cost via `LocalKekOptions`.
+  (memory-hard), with tunable cost via `LocalKekOptions` (presets aligned to RFC 9106 / OWASP).
+- **Early detection of a wrong passphrase.** Keyring metadata (v2) carries a 16-byte HMAC-SHA256
+  verifier per KEK; `Import` checks it in constant time so wrong passphrases are rejected up front
+  rather than as a delayed authentication failure.
+- **Hostile-input resistance.** Every token decoder uses overflow-safe length arithmetic and caps
+  every length-prefixed field; the keyring decoder additionally caps the number of KEKs.
+- **Concurrent safety.** `LocalContentKeyProvider` documents and tests that rotation, wrap, and
+  unwrap are safe under concurrent use; a rotating thread cannot dispose a KEK in use elsewhere.
 - **Bounded exposure of plaintext keys.** `ContentKey` zeroes its buffer on `Dispose`; derived
   passphrase bytes and intermediate copies are zeroed after use.
 
@@ -44,11 +51,13 @@ back-porting to older previews before `1.0`.
 - **A compromised host.** If an attacker can read your process memory or your passphrase as it is
   entered, no library can save the keys in use at that moment.
 - **Weak passphrases.** Argon2id raises the cost of guessing; it cannot rescue a low-entropy secret.
-- **Harvest-now-decrypt-later against asymmetric wrapping.** v0.1 has no asymmetric KEM at all (local
-  wrapping is symmetric). When cloud/asymmetric wrapping arrives, classical RSA/ECC wrapping would be
-  quantum-vulnerable until a PQ KEM (e.g. ML-KEM) or hybrid mode lands. See KNOWN-GAPS.md.
-- **Key/keyring persistence.** Storing salts, KEK metadata, and wrapped keys safely is the caller's
-  responsibility in v0.1.
+- **Harvest-now-decrypt-later against asymmetric wrapping.** The current release has no asymmetric
+  KEM at all (local wrapping is symmetric). When cloud/asymmetric wrapping arrives, classical
+  RSA/ECC wrapping would be quantum-vulnerable until a PQ KEM (e.g. ML-KEM) or hybrid mode lands.
+  See KNOWN-GAPS.md.
+- **Passphrase storage.** Storing passphrases safely (env var, secret manager, prompt) is the
+  caller's responsibility. The exported keyring metadata is non-secret and safe to persist next to
+  your data.
 
 ## Cryptographic dependencies
 

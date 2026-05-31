@@ -10,7 +10,7 @@
   <!-- ───────────────────────── NuGet package metadata ───────────────────────── -->
   <PropertyGroup>
     <PackageId>PostQuantum.KeyManagement</PackageId>
-    <Version>0.2.0-preview.1</Version>
+    <Version>0.3.0-preview.1</Version>
     <Authors>Paul Clark</Authors>
     <Company>Systems Librarian</Company>
     <Product>PostQuantum.KeyManagement</Product>
@@ -23,7 +23,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) Paul Clark</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>0.2.0-preview.1: Adds first-class local keyring export/import (LocalKeyringMetadata + LocalContentKeyProvider.ExportMetadata/Import) so multi-KEK rotation survives process restarts; the exported metadata is non-secret and passphrases are supplied at import time via PassphraseResolver. 0.1.0-preview.1: Initial preview — core IContentKeyProvider abstraction, local Argon2id + AES-256-GCM KEK provider with in-process key rotation, and provider extensibility points. See KNOWN-GAPS.md for current limitations.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.3.0-preview.1: Hardens the library for production. Adds an HMAC-SHA256 per-KEK verifier so LocalContentKeyProvider.Import detects a wrong passphrase immediately instead of as a later AuthenticationTagMismatch (keyring format v2; v1 tokens still decode). Documents and enforces full thread-safety on LocalContentKeyProvider: rotation can no longer dispose a KEK in use; Rotate now throws on a key-id collision instead of silently replacing. Token parsers are hardened against integer-overflow length prefixes and oversized inputs (every length-prefixed field is capped, KEK count is capped). Unwrap now rejects payload lengths other than the 32-byte content-key size. Adds LocalKekOptions presets (Interactive / Moderate / Sensitive matching RFC 9106 §4, and LowMemory matching the OWASP minimum). 0.2.0-preview.1: First-class local keyring export/import so multi-KEK rotation survives process restarts. 0.1.0-preview.1: Initial preview — core IContentKeyProvider abstraction, local Argon2id + AES-256-GCM KEK provider with in-process key rotation, and provider extensibility points. See CHANGELOG.md and KNOWN-GAPS.md.</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- ───────────────────────────── SourceLink / symbols ─────────────────────── -->

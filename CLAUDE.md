@@ -66,8 +66,9 @@ Directory.Build.props                 # repo-wide build settings
 
 ## Versioning
 
-- Currently `0.2.0-preview.1`. Pre-`1.0` the API may change; note breaking changes in
-  `PackageReleaseNotes` and the README status section.
-- The exported keyring token format is versioned (`FormatVersion` byte). If you change the binary
-  layout in `LocalKeyringMetadata` or `WrappedContentKey`, bump that version and keep `Decode`
-  able to reject unknown versions.
+- Currently `0.3.0-preview.1`. Pre-`1.0` the API may change; note breaking changes in
+  `PackageReleaseNotes`, `CHANGELOG.md`, and the README status section.
+- The exported keyring token format is versioned (`CurrentFormatVersion` byte on
+  `LocalKeyringMetadata`; same pattern in `WrappedContentKey`). If you change the binary layout,
+  bump that version, keep `Decode` able to read prior versions when feasible, and reject unknown
+  versions.
