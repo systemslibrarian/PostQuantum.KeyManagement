@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>PostQuantum.KeyManagement.Extensions.DependencyInjection</RootNamespace>
+    <AssemblyName>PostQuantum.KeyManagement.Extensions.DependencyInjection</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>PostQuantum.KeyManagement.Extensions.DependencyInjection</PackageId>
+    <Version>0.3.0-preview.1</Version>
+    <Authors>Paul Clark</Authors>
+    <Company>Systems Librarian</Company>
+    <Product>PostQuantum.KeyManagement</Product>
+    <Description>ASP.NET Core / Microsoft.Extensions.DependencyInjection integration for PostQuantum.KeyManagement. Adds AddPostQuantumKeyManagement with options binding, a pluggable IKeyringStore (with a built-in FileKeyringStore that writes atomically), and a basic health check so an IContentKeyProvider can be wired into a host with one line.</Description>
+    <PackageTags>post-quantum;key-management;envelope-encryption;aspnetcore;dependency-injection;options;health-checks</PackageTags>
+    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Copyright>Copyright (c) Paul Clark</Copyright>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>0.3.0-preview.1: Initial preview. Adds AddPostQuantumKeyManagement for Microsoft.Extensions.DependencyInjection hosts, an IKeyringStore abstraction with a built-in atomic FileKeyringStore, and a KeyManagementHealthCheck. Designed to make the local provider usable from ASP.NET Core minimal APIs, worker services, and Blazor with one configuration line.</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <!-- SourceLink / symbols -->
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../PostQuantum.KeyManagement/PostQuantum.KeyManagement.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.11" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

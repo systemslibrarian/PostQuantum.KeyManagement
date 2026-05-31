@@ -140,6 +140,33 @@ using var keys = LocalContentKeyProvider.Create("strong passphrase", LocalKekOpt
 The instance defaults match `Interactive`. Whatever you pick gets recorded per-KEK in the exported
 metadata, so future rebuilds reproduce the exact same KEK.
 
+## ASP.NET Core integration
+
+The sibling package
+[`PostQuantum.KeyManagement.Extensions.DependencyInjection`](src/PostQuantum.KeyManagement.Extensions.DependencyInjection)
+wires the provider into any Microsoft.Extensions.DependencyInjection host (ASP.NET Core, worker
+services, Blazor) with one configuration line, persists the keyring across restarts via an atomic
+file store, and exposes a health check.
+
+```csharp
+builder.Services.AddPostQuantumKeyManagement(options =>
+{
+    options.Passphrase = builder.Configuration["KeyManagement:Passphrase"]
+        ?? throw new InvalidOperationException("Missing passphrase");
+    options.WorkFactor = KekWorkFactor.Interactive;
+    options.KeyringPath = "keyring.bin";   // optional; survives restarts via FileKeyringStore
+});
+
+builder.Services.AddHealthChecks().AddPostQuantumKeyManagement();
+
+// Anywhere in the app:
+public sealed class SecretsService(IContentKeyProvider keys) { /* ... */ }
+```
+
+A working end-to-end example lives in [`samples/MinimalApi.Sample`](samples/MinimalApi.Sample) — it
+demonstrates POST/GET endpoints that envelope-encrypt request payloads, a `/rotate` endpoint, and
+the keyring surviving process restarts.
+
 ## Extending to a cloud KMS
 
 Cloud providers (Azure Key Vault, AWS KMS, Google Cloud KMS, a PKCS#11 HSM, …) are **not bundled** in
@@ -185,6 +212,10 @@ See [`docs/extending-providers.md`](docs/extending-providers.md) for the full wa
 - **Defensive parsing:** every token decoder uses overflow-safe length arithmetic and caps fields
   at 1 MiB; the keyring decoder caps the number of KEKs. A malicious token cannot trigger huge
   allocations or out-of-bounds reads.
+
+For the precise statement of what we defend against and what we don't, see
+[`docs/threat-model.md`](docs/threat-model.md). For our compatibility commitments — API surface,
+wire formats, target frameworks — see [`docs/versioning.md`](docs/versioning.md).
 
 Please report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
 

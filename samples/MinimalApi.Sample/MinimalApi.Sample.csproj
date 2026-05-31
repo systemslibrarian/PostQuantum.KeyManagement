@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <!-- Sample code intentionally relaxes a few analyzer rules that would otherwise add noise. -->
+    <NoWarn>$(NoWarn);CA1303;CA1812;CA2007;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/PostQuantum.KeyManagement/PostQuantum.KeyManagement.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.KeyManagement.Extensions.DependencyInjection/PostQuantum.KeyManagement.Extensions.DependencyInjection.csproj" />
+  </ItemGroup>
+
+</Project>

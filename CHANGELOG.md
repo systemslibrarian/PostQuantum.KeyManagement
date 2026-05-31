@@ -8,6 +8,18 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
 
 ### Added
 
+- **New sibling package** `PostQuantum.KeyManagement.Extensions.DependencyInjection` —
+  Microsoft.Extensions.DependencyInjection integration. Single-line registration
+  (`AddPostQuantumKeyManagement`), options binding from `IConfiguration`, an `IKeyringStore`
+  abstraction with a built-in atomic `FileKeyringStore`, and a `KeyManagementHealthCheck`. Targets
+  net8.0/net9.0/net10.0; no SDK dependencies on the core's runtime path.
+- **Minimal API sample** at `samples/MinimalApi.Sample` showing the DI package in a realistic
+  ASP.NET Core service: envelope-encrypt request payloads, rotate the KEK over HTTP, keyring
+  survives restarts.
+- **`docs/threat-model.md`** — explicit attacker model, security invariants (I-1…I-10), and
+  out-of-scope threats. The companion to `SECURITY.md`.
+- **`docs/versioning.md`** — SemVer policy, wire-format compatibility policy, and the target-framework
+  support matrix.
 - **Per-KEK verifier in the keyring metadata.** Each KEK now carries a 16-byte HMAC-SHA256 tag over
   a fixed library label, keyed by the KEK itself. At import time `LocalContentKeyProvider.Import`
   recomputes the tag and rejects the supplied passphrase up front (with a clear
