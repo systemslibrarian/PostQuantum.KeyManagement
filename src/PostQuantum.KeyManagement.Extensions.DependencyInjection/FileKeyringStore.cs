@@ -56,17 +56,7 @@ public sealed class FileKeyringStore : IKeyringStore
         try
         {
             await File.WriteAllTextAsync(tempPath, token, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-
-            // File.Replace is atomic on Windows and on POSIX filesystems that support rename(2).
-            // When the destination doesn't exist yet, fall back to Move (also atomic on the same volume).
-            if (File.Exists(_path))
-            {
-                File.Replace(tempPath, _path, destinationBackupFileName: null);
-            }
-            else
-            {
-                File.Move(tempPath, _path);
-            }
+            await SwapInAtomicallyAsync(tempPath, cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -83,6 +73,49 @@ public sealed class FileKeyringStore : IKeyringStore
             }
 
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Renames <paramref name="tempPath"/> over <see cref="_path"/> atomically. On POSIX this is a
+    /// single <c>rename(2)</c>. On Windows, <see cref="File.Replace(string, string, string?)"/> can
+    /// throw <see cref="IOException"/> if a reader currently holds the destination open — this
+    /// helper retries with a brief backoff so a single-writer + many-readers workload (the
+    /// production deployment shape documented in docs/deployment.md) is not racy.
+    /// </summary>
+    private async ValueTask SwapInAtomicallyAsync(string tempPath, CancellationToken cancellationToken)
+    {
+        const int maxAttempts = 8;
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                // Fast path: destination already exists.
+                File.Replace(tempPath, _path, destinationBackupFileName: null);
+                return;
+            }
+            catch (FileNotFoundException)
+            {
+                // First-write path: destination does not exist yet. Try to materialise it via Move.
+                try
+                {
+                    File.Move(tempPath, _path);
+                    return;
+                }
+                catch (IOException) when (attempt < maxAttempts)
+                {
+                    // TOCTOU: another writer created the file between our Replace and our Move.
+                    // Loop back and try Replace; if Move-vs-Replace races repeat, fall through to
+                    // the IOException retry below.
+                }
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                // Windows: a reader may hold the destination open, blocking Replace. Brief backoff
+                // and try again. POSIX never lands here.
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(5 * attempt), cancellationToken).ConfigureAwait(false);
         }
     }
 }

@@ -136,6 +136,25 @@ WrappedContentKey migrated = await keys.RewrapAsync(wrapped);
 // migrated.KeyId == newKeyId, but it still unwraps to the exact same content key.
 ```
 
+### Rotation best practices
+
+A short, opinionated checklist — the long version is in [`docs/deployment.md`](docs/deployment.md):
+
+- **Rotate KEKs on a schedule, not on impulse.** A common starting cadence is every 60–90 days
+  for KEKs; the previous KEKs stay in the ring and keep unwrapping existing data.
+- **Never reuse a salt across rotations.** The default `Rotate(newPassphrase)` overload generates
+  a fresh random salt; only pass a salt explicitly if you have a specific reason to.
+- **DEKs rotate themselves automatically.** `CreateContentKeyAsync` mints a fresh DEK every time,
+  so per-record / per-blob keys are already rotating without any extra ceremony.
+- **`RewrapAsync` is your migration tool.** It re-wraps an old DEK under the active KEK without
+  touching the underlying ciphertext. Do it lazily on access, not in a big batch — that way
+  rotation never blocks a deploy.
+- **Persist the keyring on every rotation.** The `WorkerService.Sample` shows the shape: rotate,
+  then immediately call `IKeyringStore.SaveAsync` so a crash between rotations doesn't leave the
+  on-disk keyring stale.
+- **Back up the keyring file.** Losing the keyring means losing the ability to unwrap every key
+  ever wrapped by it. See [`docs/deployment.md`](docs/deployment.md) § 8 for the recovery matrix.
+
 ## Persisting the keyring across restarts
 
 After one or more rotations the provider holds several KEKs. Export the ring's **non-secret**
@@ -241,9 +260,35 @@ using (ContentKey dek = await keys.UnwrapAsync(w))
 }
 ```
 
-The same shape applies to `PostQuantum.Jwt` (use the DEK as the JWT signing/encryption key), to
-column-level encryption in EF Core (see `samples/EfCore.Sample`), and to any other library that
-takes a symmetric key as `ReadOnlySpan<byte>`.
+### With `PostQuantum.Jwt`
+
+The DEK doubles as a JWT signing key (HS-family) or encryption key (A256GCM `enc` algorithm):
+
+```csharp
+using var keys = LocalContentKeyProvider.Create(passphrase);
+
+string token;
+using (ContentKey dek = await keys.CreateContentKeyAsync())
+{
+    // Mint a JWT signed/encrypted with the DEK, then persist the wrapped key alongside the JWT
+    // (in a sidecar, in a "kid" claim that points at a wrapped-key store, etc).
+    token = PostQuantumJwt.IssueHS256(claims: new { sub = "user-42" }, key: dek.Key);
+
+    string keyId = dek.WrappedKey.KeyId;            // record alongside the token
+    string wrappedKeyToken = dek.WrappedKey.Encode();
+    SaveWrappedKey(keyId, wrappedKeyToken);
+}
+
+// Verify later: load the wrapped key by id, unwrap, verify the JWT.
+WrappedContentKey w = WrappedContentKey.Decode(LoadWrappedKey(KidFromJwt(token)));
+using (ContentKey dek = await keys.UnwrapAsync(w))
+{
+    var claims = PostQuantumJwt.VerifyHS256(token, key: dek.Key);
+}
+```
+
+The same shape applies to column-level encryption in EF Core (see [`samples/EfCore.Sample`](samples/EfCore.Sample))
+and to any other library that takes a symmetric key as `ReadOnlySpan<byte>`.
 
 ## Local vs cloud KMS
 
@@ -283,6 +328,13 @@ KMS) are tracked in [`future.md`](future.md); the extension point is documented 
   sources.
 - **Boundary validation:** empty passphrases are rejected with a clear `ArgumentException` at the
   library boundary, before any cryptographic work runs.
+- **Safe diagnostics:** the records that carry byte arrays (`WrappedContentKey`, `LocalKekMetadata`,
+  `LocalKeyringMetadata`) override `ToString()` to redact byte content (`<NN bytes>`), so they are
+  safe to log in production. Salts, KEK ids, and Argon2id parameters are non-secret and shown
+  in full.
+- **Cross-platform atomic persistence:** `FileKeyringStore` uses `File.Replace` (POSIX `rename(2)`)
+  with a bounded retry on Windows-specific `IOException` from concurrent readers — single-writer +
+  many-readers, the deployment model in `docs/deployment.md`, is race-free in practice.
 
 | Document                                            | What it tells you                                  |
 | --------------------------------------------------- | -------------------------------------------------- |

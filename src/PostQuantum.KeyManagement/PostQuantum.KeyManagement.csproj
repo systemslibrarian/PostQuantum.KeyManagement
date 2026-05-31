@@ -6,6 +6,8 @@
     <AssemblyName>PostQuantum.KeyManagement</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsAotCompatible>true</IsAotCompatible>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <EnablePackageValidation>true</EnablePackageValidation>
   </PropertyGroup>
 
   <!-- ───────────────────────── NuGet package metadata ───────────────────────── -->

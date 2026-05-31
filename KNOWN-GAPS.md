@@ -112,7 +112,9 @@ audit gaps below, see [`future.md`](future.md).
 - ✅ **Done in `0.4`:** `Microsoft.Extensions.DependencyInjection` integration package
   (`AddPostQuantumKeyManagement`, `IKeyringStore` + `FileKeyringStore`, `KeyManagementHealthCheck`),
   three end-to-end samples (Minimal API, Worker Service, EF Core), threat model, versioning
-  policy, deployment guide, and `TryDecode` overloads for untrusted input.
+  policy, deployment guide, `TryDecode` overloads for untrusted input, safe `ToString()` on every
+  record that carries byte arrays, and Windows-aware atomic file persistence with bounded retry on
+  the reader-writer race.
 - The first **cloud KMS provider** (likely Azure Key Vault) as a separate package, validating the
   extension point against a real service.
 - The second **cloud KMS provider** (likely AWS KMS) to lock the abstraction in.

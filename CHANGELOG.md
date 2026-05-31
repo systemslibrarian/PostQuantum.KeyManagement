@@ -47,8 +47,21 @@ day-to-day usability.
 ### Changed
 
 - **NuGet metadata polish.** Both packages now carry stronger `Description`, `Title`,
-  `PackageTags`, and `PackageReleaseNotes`; the core declares `<IsAotCompatible>true</IsAotCompatible>`.
-- **README** rewritten to lead with concrete value, a 60-second demo, and a local-vs-cloud table.
+  `PackageTags`, and `PackageReleaseNotes`; the core declares `<IsAotCompatible>true</IsAotCompatible>`;
+  both opt in to `<EnablePackageValidation>` and `<NeutralLanguage>en-US</NeutralLanguage>`.
+- **README** rewritten to lead with concrete value, a 60-second demo, a local-vs-cloud table, and
+  an opinionated key-rotation-best-practices checklist; the `PostQuantum.*` integration sketches
+  now cover both `FileEncryption` and `Jwt`.
+- **Safe `ToString()`** on the records that carry byte arrays (`WrappedContentKey`,
+  `LocalKekMetadata`, `LocalKeyringMetadata`). The default record-generated output would emit
+  `"System.Byte[]"` for ciphertext, salt, and verifier; the overrides render `<NN bytes>` instead,
+  making the records safe to include in log lines.
+- **`FileKeyringStore` is now race-free on Windows.** The atomic-swap helper retries `File.Replace`
+  on Windows-specific `IOException` from concurrent readers (POSIX `rename(2)` is unaffected) with
+  a bounded backoff. Combined with the existing TOCTOU handling, the single-writer +
+  many-readers production model is now exercised by an integration test.
+- **`TryDecode` overloads** are annotated with `[NotNullWhen(true)]` for cleaner nullable analysis
+  at call sites.
 
 ## [0.3.0-preview.1] — 2026-05-31
 

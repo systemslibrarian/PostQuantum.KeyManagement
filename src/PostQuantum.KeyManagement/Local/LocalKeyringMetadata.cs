@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using PostQuantum.KeyManagement.Internal;
 
 namespace PostQuantum.KeyManagement.Local;
@@ -84,7 +86,7 @@ public sealed record LocalKeyringMetadata
     /// inappropriate. The exception-throwing <see cref="Decode"/> remains the right choice when a
     /// malformed token is a programmer error.
     /// </remarks>
-    public static bool TryDecode(string? token, out LocalKeyringMetadata? result)
+    public static bool TryDecode([NotNullWhen(true)] string? token, [NotNullWhen(true)] out LocalKeyringMetadata? result)
     {
         if (string.IsNullOrEmpty(token))
         {
@@ -102,6 +104,18 @@ public sealed record LocalKeyringMetadata
             result = null;
             return false;
         }
+    }
+
+    /// <summary>
+    /// Renders a diagnostic-friendly representation showing the active KEK id and KEK count,
+    /// without dumping every <see cref="LocalKekMetadata"/> in the ring. Safe to log.
+    /// </summary>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Append("ActiveKeyId = ").Append(ActiveKeyId);
+        builder.Append(", Keks.Count = ").Append(Keks.Count);
+        return true;
     }
 
     private static LocalKeyringMetadata DecodeCore(string token)

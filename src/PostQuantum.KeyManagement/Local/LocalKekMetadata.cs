@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace PostQuantum.KeyManagement.Local;
 
 /// <summary>
@@ -40,4 +42,30 @@ public sealed record LocalKekMetadata
         MemorySizeInKib = MemorySizeInKib,
         Iterations = Iterations,
     };
+
+    /// <summary>
+    /// Renders a diagnostic-friendly representation: identifiers and Argon2id parameters in full,
+    /// byte arrays as <c>&lt;NN bytes&gt;</c>. Safe to log. Overrides the record's default
+    /// <c>PrintMembers</c>, which would otherwise emit <c>"System.Byte[]"</c> for the salt and verifier.
+    /// </summary>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Append("KeyId = ").Append(KeyId);
+        builder.Append(", Salt = <").Append(Salt.Length).Append(" bytes>");
+        builder.Append(", DegreeOfParallelism = ").Append(DegreeOfParallelism);
+        builder.Append(", MemorySizeInKib = ").Append(MemorySizeInKib);
+        builder.Append(", Iterations = ").Append(Iterations);
+        builder.Append(", Verifier = ");
+        if (Verifier is null)
+        {
+            builder.Append("null");
+        }
+        else
+        {
+            builder.Append('<').Append(Verifier.Length).Append(" bytes>");
+        }
+
+        return true;
+    }
 }

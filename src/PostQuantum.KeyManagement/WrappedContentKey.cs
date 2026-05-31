@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using PostQuantum.KeyManagement.Internal;
 
 namespace PostQuantum.KeyManagement;
@@ -72,7 +74,7 @@ public sealed record WrappedContentKey
     /// payload) and exception-driven control flow would be inappropriate. The exception-throwing
     /// <see cref="Decode"/> remains the right choice when a malformed token is a programmer error.
     /// </remarks>
-    public static bool TryDecode(string? token, out WrappedContentKey? result)
+    public static bool TryDecode([NotNullWhen(true)] string? token, [NotNullWhen(true)] out WrappedContentKey? result)
     {
         if (string.IsNullOrEmpty(token))
         {
@@ -90,6 +92,21 @@ public sealed record WrappedContentKey
             result = null;
             return false;
         }
+    }
+
+    /// <summary>
+    /// Renders a diagnostic-friendly representation that names the routing fields but never the
+    /// ciphertext bytes. Safe to log. Overrides the record's default <c>PrintMembers</c>, which
+    /// would otherwise emit <c>"System.Byte[]"</c> for the ciphertext.
+    /// </summary>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Append("ProviderId = ").Append(ProviderId);
+        builder.Append(", KeyId = ").Append(KeyId);
+        builder.Append(", Algorithm = ").Append(Algorithm);
+        builder.Append(", Ciphertext = <").Append(Ciphertext.Length).Append(" bytes>");
+        return true;
     }
 
     private static WrappedContentKey DecodeCore(string token)

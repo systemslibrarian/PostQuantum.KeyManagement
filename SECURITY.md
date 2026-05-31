@@ -50,6 +50,13 @@ release; see [`future.md`](future.md) for the 1.0 checklist.
   `ArgumentException`s at the library boundary, before any cryptographic work runs.
 - **Concurrent safety.** `LocalContentKeyProvider` documents and tests that rotation, wrap, and
   unwrap are safe under concurrent use; a rotating thread cannot dispose a KEK in use elsewhere.
+- **Safe diagnostic output.** The records that carry byte arrays override `ToString()` to redact
+  byte content as `<NN bytes>`. Log lines that include these records cannot leak ciphertext or
+  the keyring verifier.
+- **Cross-platform atomic file persistence.** `FileKeyringStore` uses `File.Replace` (POSIX
+  `rename(2)`) with a bounded retry on Windows-specific `IOException` from concurrent readers,
+  so the single-writer + many-readers production model documented in `docs/deployment.md` is
+  race-free in practice.
 - **Bounded exposure of plaintext keys.** `ContentKey` zeroes its buffer on `Dispose`; derived
   passphrase bytes and intermediate copies are zeroed after use.
 

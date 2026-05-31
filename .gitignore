@@ -28,3 +28,9 @@ coverage*.json
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Secrets — never commit
+nugetkey.txt
+nugetkey*.txt
+*.apikey
+secrets.local.*

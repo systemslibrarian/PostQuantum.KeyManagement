@@ -5,6 +5,8 @@
     <RootNamespace>PostQuantum.KeyManagement.Extensions.DependencyInjection</RootNamespace>
     <AssemblyName>PostQuantum.KeyManagement.Extensions.DependencyInjection</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <EnablePackageValidation>true</EnablePackageValidation>
   </PropertyGroup>
 
   <!-- NuGet package metadata -->
