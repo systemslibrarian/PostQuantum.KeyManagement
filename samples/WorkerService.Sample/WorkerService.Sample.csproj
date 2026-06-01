@@ -13,7 +13,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/PostQuantum.KeyManagement/PostQuantum.KeyManagement.csproj" />
-    <ProjectReference Include="../../src/PostQuantum.KeyManagement.Extensions.DependencyInjection/PostQuantum.KeyManagement.Extensions.DependencyInjection.csproj" />
   </ItemGroup>
 
   <ItemGroup>

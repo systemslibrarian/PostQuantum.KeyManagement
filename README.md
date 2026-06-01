@@ -65,12 +65,14 @@ Each sample has its own README explaining what it demonstrates and how to adapt 
 ## Installation
 
 ```bash
-# Core library
 dotnet add package PostQuantum.KeyManagement --prerelease
-
-# Microsoft.Extensions.DependencyInjection integration (optional, recommended for ASP.NET Core / hosts)
-dotnet add package PostQuantum.KeyManagement.Extensions.DependencyInjection --prerelease
 ```
+
+One package contains everything: the core abstraction, the local provider, the
+`Microsoft.Extensions.DependencyInjection` integration, the `FileKeyringStore`, and the
+`KeyManagementHealthCheck`. Future cloud KMS providers (Azure Key Vault, AWS KMS, Google Cloud KMS)
+will ship as separate packages so they can carry their own SDK dependencies without bloating the
+core.
 
 ## Quick start
 
@@ -198,11 +200,11 @@ metadata, so future rebuilds reproduce the exact same KEK.
 
 ## ASP.NET Core / host integration
 
-The sibling package
-[`PostQuantum.KeyManagement.Extensions.DependencyInjection`](src/PostQuantum.KeyManagement.Extensions.DependencyInjection)
-wires the provider into any `Microsoft.Extensions.DependencyInjection` host (ASP.NET Core, worker
-services, Blazor) in one line, persists the keyring via an atomic file store, and exposes a
-real-round-trip health check.
+The package wires the provider into any `Microsoft.Extensions.DependencyInjection` host (ASP.NET
+Core, worker services, Blazor) in one line, persists the keyring via an atomic file store, and
+exposes a real-round-trip health check. No second `using` required — the `AddPostQuantumKeyManagement`
+extensions live in the `Microsoft.Extensions.DependencyInjection` namespace, the same namespace
+every ASP.NET Core `Program.cs` already imports.
 
 ```csharp
 builder.Services.AddPostQuantumKeyManagement(options =>

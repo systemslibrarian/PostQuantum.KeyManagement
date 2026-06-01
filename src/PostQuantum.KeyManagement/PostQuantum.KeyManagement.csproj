@@ -18,8 +18,8 @@
     <Company>Systems Librarian</Company>
     <Product>PostQuantum.KeyManagement</Product>
     <Title>PostQuantum.KeyManagement — envelope encryption + key rotation for .NET</Title>
-    <Description>Clean, high-level key management and rotation for post-quantum-ready encryption in .NET. Implements the envelope-encryption pattern (256-bit content keys wrapped by a key-encryption key) with a secure local KEK provider backed by Argon2id + AES-256-GCM, full thread-safety, hostile-input-resistant token parsers, an HMAC-SHA256 keyring verifier for early passphrase detection, and a tiny extension point so cloud KMS providers (Azure Key Vault, AWS KMS, Google Cloud KMS, PKCS#11/HSMs) plug in without disturbing application code. The natural companion to PostQuantum.FileEncryption and PostQuantum.Jwt. See KNOWN-GAPS.md and docs/threat-model.md for honest, explicit limits.</Description>
-    <PackageTags>post-quantum;pqc;cryptography;key-management;key-rotation;kms;argon2id;envelope-encryption;aes-gcm;security;dek;kek;hsm</PackageTags>
+    <Description>Clean, high-level key management and rotation for post-quantum-ready encryption in .NET. Implements the envelope-encryption pattern (256-bit content keys wrapped by a key-encryption key) with a secure local KEK provider backed by Argon2id + AES-256-GCM, full thread-safety, hostile-input-resistant token parsers, an HMAC-SHA256 keyring verifier for early passphrase detection, first-class Microsoft.Extensions.DependencyInjection integration (AddPostQuantumKeyManagement, IKeyringStore + atomic FileKeyringStore, KeyManagementHealthCheck), and a tiny extension point so cloud KMS providers (Azure Key Vault, AWS KMS, Google Cloud KMS, PKCS#11/HSMs) plug in as separate packages without disturbing application code. The natural companion to PostQuantum.FileEncryption and PostQuantum.Jwt. See KNOWN-GAPS.md and docs/threat-model.md for honest, explicit limits.</Description>
+    <PackageTags>post-quantum;pqc;cryptography;key-management;key-rotation;kms;argon2id;envelope-encryption;aes-gcm;security;dek;kek;hsm;aspnetcore;dependency-injection;health-checks</PackageTags>
     <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.KeyManagement</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -27,7 +27,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) Paul Clark</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>0.4.0-preview.1: Production-shaped preview. Adds the sibling PostQuantum.KeyManagement.Extensions.DependencyInjection package (one-line AddPostQuantumKeyManagement, an IKeyringStore abstraction with an atomic FileKeyringStore, and KeyManagementHealthCheck). Adds three end-to-end samples (Minimal API, Worker Service with scheduled rotation, EF Core with per-row envelope encryption that survives KEK rotation). Adds TryDecode overloads on WrappedContentKey and LocalKeyringMetadata for untrusted input. Adds boundary validation rejecting empty passphrases with a clear ArgumentException before any cryptographic work. Adds docs/threat-model.md (ten numbered security invariants), docs/versioning.md (SemVer and wire-format policy), and docs/deployment.md (production operational checklist). Multi-targets net8.0/net9.0/net10.0 with deterministic builds and SourceLink. Full release notes in CHANGELOG.md; the path to cloud KMS providers, external review, and 1.0 is in future.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.4.0-preview.1: Production-shaped first preview. ONE package now contains the core abstraction plus first-class Microsoft.Extensions.DependencyInjection integration (AddPostQuantumKeyManagement, IKeyringStore with an atomic Windows-aware FileKeyringStore, and KeyManagementHealthCheck). Ships three end-to-end samples (Minimal API, Worker Service with scheduled rotation, EF Core with per-row envelope encryption that survives KEK rotation). Includes TryDecode overloads on WrappedContentKey and LocalKeyringMetadata for untrusted input, boundary validation rejecting empty passphrases at the library boundary, safe ToString() on the records that carry byte arrays, and Windows-aware bounded retry on atomic file swap. Ships docs/threat-model.md (ten numbered security invariants), docs/versioning.md (SemVer and wire-format policy), and docs/deployment.md (production operational checklist). Multi-targets net8.0/net9.0/net10.0 with deterministic builds, SourceLink, and IsAotCompatible. Future cloud KMS providers (Azure Key Vault, AWS KMS, GCP KMS) will ship as separate packages — the path is mapped out in future.md.</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- ───────────────────────────── SourceLink / symbols ─────────────────────── -->
@@ -44,6 +44,9 @@
 
   <ItemGroup>
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.11" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 

@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PostQuantum.KeyManagement;
-using PostQuantum.KeyManagement.Extensions.DependencyInjection;
 using PostQuantum.KeyManagement.Local;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);

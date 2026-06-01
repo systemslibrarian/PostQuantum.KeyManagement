@@ -1,10 +1,10 @@
 using PostQuantum.KeyManagement.Local;
 
-namespace PostQuantum.KeyManagement.Extensions.DependencyInjection;
+namespace PostQuantum.KeyManagement;
 
 /// <summary>
 /// Configuration for the local key-management provider when registered through
-/// <see cref="KeyManagementServiceCollectionExtensions.AddPostQuantumKeyManagement(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{KeyManagementOptions})"/>.
+/// <c>AddPostQuantumKeyManagement</c> on an <see cref="Microsoft.Extensions.DependencyInjection.IServiceCollection"/>.
 /// </summary>
 /// <remarks>
 /// <para>

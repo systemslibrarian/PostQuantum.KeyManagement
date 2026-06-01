@@ -1,9 +1,12 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using PostQuantum.KeyManagement;
 using PostQuantum.KeyManagement.Local;
 
-namespace PostQuantum.KeyManagement.Extensions.DependencyInjection;
+// ReSharper disable once CheckNamespace — extensions for IServiceCollection / IHealthChecksBuilder
+// live in the host's namespace by .NET convention, so they appear without an extra `using`.
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// <see cref="IServiceCollection"/> extensions that wire a local
@@ -96,5 +99,25 @@ public static class KeyManagementServiceCollectionExtensions
         });
 
         return services;
+    }
+}
+
+/// <summary>
+/// <see cref="IHealthChecksBuilder"/> extension that registers <see cref="KeyManagementHealthCheck"/>.
+/// </summary>
+public static class KeyManagementHealthChecksBuilderExtensions
+{
+    /// <summary>
+    /// Registers <see cref="KeyManagementHealthCheck"/> against the host's
+    /// <see cref="IContentKeyProvider"/> singleton.
+    /// </summary>
+    public static IHealthChecksBuilder AddPostQuantumKeyManagement(
+        this IHealthChecksBuilder builder,
+        string name = "post-quantum-key-management",
+        HealthStatus? failureStatus = null,
+        IEnumerable<string>? tags = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder.AddCheck<KeyManagementHealthCheck>(name, failureStatus, tags ?? []);
     }
 }

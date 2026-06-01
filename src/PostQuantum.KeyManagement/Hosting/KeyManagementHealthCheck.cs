@@ -1,7 +1,6 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace PostQuantum.KeyManagement.Extensions.DependencyInjection;
+namespace PostQuantum.KeyManagement;
 
 /// <summary>
 /// A lightweight <see cref="IHealthCheck"/> that verifies the registered
@@ -44,25 +43,5 @@ public sealed class KeyManagementHealthCheck : IHealthCheck
         {
             return HealthCheckResult.Unhealthy("Provider round-trip threw.", ex);
         }
-    }
-}
-
-/// <summary>
-/// Extension method for registering <see cref="KeyManagementHealthCheck"/>.
-/// </summary>
-public static class KeyManagementHealthChecksBuilderExtensions
-{
-    /// <summary>
-    /// Registers <see cref="KeyManagementHealthCheck"/> against the host's
-    /// <see cref="IContentKeyProvider"/> singleton.
-    /// </summary>
-    public static IHealthChecksBuilder AddPostQuantumKeyManagement(
-        this IHealthChecksBuilder builder,
-        string name = "post-quantum-key-management",
-        HealthStatus? failureStatus = null,
-        IEnumerable<string>? tags = null)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        return builder.AddCheck<KeyManagementHealthCheck>(name, failureStatus, tags ?? []);
     }
 }

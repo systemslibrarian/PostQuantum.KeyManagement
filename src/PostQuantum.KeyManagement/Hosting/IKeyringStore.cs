@@ -1,6 +1,6 @@
 using PostQuantum.KeyManagement.Local;
 
-namespace PostQuantum.KeyManagement.Extensions.DependencyInjection;
+namespace PostQuantum.KeyManagement;
 
 /// <summary>
 /// Persists and retrieves the non-secret <see cref="LocalKeyringMetadata"/> blob used to rebuild a

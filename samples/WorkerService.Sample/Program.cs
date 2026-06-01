@@ -1,4 +1,4 @@
-using PostQuantum.KeyManagement.Extensions.DependencyInjection;
+using PostQuantum.KeyManagement;
 using WorkerService.Sample;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);

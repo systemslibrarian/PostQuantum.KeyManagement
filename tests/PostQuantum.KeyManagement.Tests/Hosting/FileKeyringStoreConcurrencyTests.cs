@@ -1,7 +1,6 @@
-using PostQuantum.KeyManagement.Extensions.DependencyInjection;
 using Xunit;
 
-namespace PostQuantum.KeyManagement.Extensions.DependencyInjection.Tests;
+namespace PostQuantum.KeyManagement.Tests.Hosting;
 
 /// <summary>
 /// Exercises the atomic-write paths in <see cref="FileKeyringStore"/>:

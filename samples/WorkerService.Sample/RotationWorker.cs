@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
 using PostQuantum.KeyManagement;
-using PostQuantum.KeyManagement.Extensions.DependencyInjection;
 using PostQuantum.KeyManagement.Local;
 
 namespace WorkerService.Sample;

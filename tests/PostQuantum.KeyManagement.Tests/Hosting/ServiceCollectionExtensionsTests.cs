@@ -1,10 +1,8 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
-using PostQuantum.KeyManagement;
-using PostQuantum.KeyManagement.Extensions.DependencyInjection;
 using Xunit;
 
-namespace PostQuantum.KeyManagement.Extensions.DependencyInjection.Tests;
+namespace PostQuantum.KeyManagement.Tests.Hosting;
 
 public sealed class ServiceCollectionExtensionsTests
 {

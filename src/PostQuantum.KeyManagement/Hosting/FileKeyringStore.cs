@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace PostQuantum.KeyManagement.Extensions.DependencyInjection;
+namespace PostQuantum.KeyManagement;
 
 /// <summary>
 /// A file-backed <see cref="IKeyringStore"/> that persists the keyring blob to a single file and
@@ -29,16 +29,47 @@ public sealed class FileKeyringStore : IKeyringStore
     /// <inheritdoc />
     public async ValueTask<string?> LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(_path))
+        // Open with FileShare.ReadWrite | FileShare.Delete so a concurrent writer's atomic Replace
+        // can swap underneath us; POSIX rename(2) doesn't care about open file descriptors either
+        // way. On Windows, File.Replace leaves a brief window where the destination can transiently
+        // appear missing — we retry FileNotFoundException a bounded number of times to ride
+        // through that gap. If the file genuinely doesn't exist (first startup before a write),
+        // every retry sees the same absence and we eventually return null.
+        const int maxAttempts = 8;
+        for (int attempt = 1; ; attempt++)
         {
-            return null;
+            try
+            {
+                await using var stream = new FileStream(
+                    _path,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete,
+                    bufferSize: 4096,
+                    useAsync: true);
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+                return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (FileNotFoundException) when (attempt < maxAttempts)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(5 * attempt), cancellationToken).ConfigureAwait(false);
+            }
+            catch (FileNotFoundException)
+            {
+                return null;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // Parent directory doesn't exist — the file definitively cannot.
+                return null;
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                // Windows can transiently report the destination as "in use" while a writer is
+                // mid-Replace. Briefly back off and retry; POSIX never lands here.
+                await Task.Delay(TimeSpan.FromMilliseconds(5 * attempt), cancellationToken).ConfigureAwait(false);
+            }
         }
-
-#if NET8_0_OR_GREATER
-        return await File.ReadAllTextAsync(_path, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-#else
-        return await File.ReadAllTextAsync(_path, Encoding.UTF8).ConfigureAwait(false);
-#endif
     }
 
     /// <inheritdoc />

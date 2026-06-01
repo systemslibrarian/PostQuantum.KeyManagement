@@ -6,21 +6,27 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
 
 ## [0.4.0-preview.1] — 2026-05-31
 
-This release turns the hardened 0.3 core into a production-shaped preview. Adds the DI
-integration package as a peer NuGet package, three end-to-end samples, full documentation set
-(threat model, versioning policy, deployment guide), and small API refinements that elevate
-day-to-day usability.
+The first production-shaped preview. **One package** now contains the hardened core, the
+`Microsoft.Extensions.DependencyInjection` integration (registration extensions, `IKeyringStore`
++ atomic Windows-aware `FileKeyringStore`, `KeyManagementHealthCheck`), three end-to-end samples,
+and a complete documentation set (threat model, versioning policy, deployment guide). Future cloud
+KMS providers (Azure Key Vault, AWS KMS, Google Cloud KMS) ship as separate packages so they can
+carry cloud SDK dependencies without bloating the core.
 
 ### Added
 
-- **Sibling package** `PostQuantum.KeyManagement.Extensions.DependencyInjection` — the idiomatic
-  way to wire the provider into any `Microsoft.Extensions.DependencyInjection` host:
+- **`Microsoft.Extensions.DependencyInjection` integration**, in the same single package as the
+  core (no second `using`, no second NuGet install). The extension methods live in the
+  `Microsoft.Extensions.DependencyInjection` namespace by convention, so they appear automatically
+  in any ASP.NET Core `Program.cs`:
   - `AddPostQuantumKeyManagement(options => ...)` registers a singleton `IContentKeyProvider`.
-    Idempotent — calling it twice does not double-register.
+    Idempotent — `TryAddSingleton`-based, calling it twice does not double-register.
   - `KeyManagementOptions` with a `KekWorkFactor` enum mapping to the static `LocalKekOptions`
     presets. Bindable from `IConfiguration`.
-  - `IKeyringStore` abstraction with a built-in `FileKeyringStore` (atomic temp+rename writes,
-    so a crashed write cannot leave a half-written file).
+  - `IKeyringStore` abstraction with a built-in atomic `FileKeyringStore`. Windows-aware:
+    readers open with `FileShare.ReadWrite | FileShare.Delete` and retry transient
+    `FileNotFoundException` / `IOException` from a writer's mid-`Replace` gap, so the single-
+    writer + many-readers model is race-free.
   - `KeyManagementHealthCheck` that runs a real wrap → unwrap round-trip, surfaced via
     `services.AddHealthChecks().AddPostQuantumKeyManagement()`.
 - **Three end-to-end samples** in `samples/`:
