@@ -1,8 +1,9 @@
 # MinimalApi.Sample
 
 A small ASP.NET Core minimal-API showing how to use
-[`PostQuantum.KeyManagement.Extensions.DependencyInjection`](../../src/PostQuantum.KeyManagement.Extensions.DependencyInjection)
-to envelope-encrypt request payloads in a realistic web service.
+[`PostQuantum.KeyManagement`](../../src/PostQuantum.KeyManagement)'s built-in
+`Microsoft.Extensions.DependencyInjection` integration to envelope-encrypt request payloads in a
+realistic web service.
 
 ## What it demonstrates
 

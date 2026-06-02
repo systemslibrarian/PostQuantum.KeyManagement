@@ -56,8 +56,9 @@ rotating from where it left off.
   every 90 days for KEKs and per-record-or-session for DEKs (DEKs are minted by
   `CreateContentKeyAsync`, so that's already automatic).
 - **Wire the liveness probe into your health/readiness endpoint.** ASP.NET Core hosts can use the
-  `KeyManagementHealthCheck` exported from `PostQuantum.KeyManagement.Extensions.DependencyInjection`
-  instead of running a separate background probe.
+  `KeyManagementHealthCheck` exported by `PostQuantum.KeyManagement` (via
+  `services.AddHealthChecks().AddPostQuantumKeyManagement()`) instead of running a separate
+  background probe.
 - **Back up the keyring file.** Losing it makes every wrapped key permanently unrecoverable. See
   [`docs/deployment.md`](../../docs/deployment.md) for the full operational checklist.
 

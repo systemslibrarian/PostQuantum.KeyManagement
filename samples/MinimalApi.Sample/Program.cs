@@ -1,6 +1,7 @@
-// A minimal API showing how to use PostQuantum.KeyManagement.Extensions.DependencyInjection in a
-// realistic ASP.NET Core app: register the provider once, persist the keyring across restarts,
-// envelope-encrypt request payloads with rotatable wrapped keys, and decrypt them on read.
+// A minimal API showing how to use PostQuantum.KeyManagement's built-in
+// Microsoft.Extensions.DependencyInjection integration in a realistic ASP.NET Core app: register the
+// provider once, persist the keyring across restarts, envelope-encrypt request payloads with
+// rotatable wrapped keys, and decrypt them on read.
 
 using System.Collections.Concurrent;
 using System.Security.Cryptography;

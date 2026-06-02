@@ -7,8 +7,8 @@ Status as of **`0.3.0-preview.1`**.
 
 ## 1. Package version
 
-`PostQuantum.KeyManagement` and `PostQuantum.KeyManagement.Extensions.DependencyInjection` follow
-[Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html), with one explicit caveat: while
+`PostQuantum.KeyManagement` follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html),
+with one explicit caveat: while
 the major version is `0`, the API surface may change between minor versions, and we will document
 every such change in `CHANGELOG.md`.
 
