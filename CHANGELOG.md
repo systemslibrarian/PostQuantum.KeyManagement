@@ -4,6 +4,71 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the library uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0-preview.2] — 2026-06-01
+
+A hardening + honesty pass on top of `0.4.0-preview.1`. Backward-compatible: v1 and v2 keyrings
+still decode and import. No crypto-logic changes — AES-GCM wrap, Argon2id parameters, and memory
+zeroing are byte-for-byte identical to preview.1.
+
+### Changed
+
+- **Wrong-passphrase verifier widened from 16 to 32 bytes** (full HMAC-SHA256 output) so the
+  import-time canary matches the library's 256-bit posture. Keyring metadata format bumped from
+  **v2 → v3**. v1 tokens (no verifier, written by `0.2` and earlier) and v2 tokens (16-byte
+  truncated verifier, written by `0.3` / `0.4-preview.1`) **still decode and import correctly**:
+  the v3 reader compares whatever width the persisted token carries against the matching prefix of
+  the recomputed 32-byte verifier in constant time (`CryptographicOperations.FixedTimeEquals`),
+  so v2 keyrings continue to detect wrong passphrases at import. The verifier label is held
+  stable, so the v3 verifier is bit-for-bit the prefix-extension of the v2 verifier.
+- **README opening and `## Security posture` section rewritten** so the *very first* thing a
+  reader learns is the honest scope of the "PostQuantum" claim: today's only post-quantum
+  property is **symmetric-by-key-size** (AES-256-GCM + Argon2id, ~128-bit post-quantum strength
+  under Grover). **No asymmetric PQ KEM ships in this release** — no ML-KEM, no X-Wing, no
+  hybrid wrap. Every PQ mention in the posture section now links to
+  [`KNOWN-GAPS.md` §1](KNOWN-GAPS.md#1-post-quantum-is-currently-a-symmetric-only-claim).
+- **KEK-id collision documentation made honest.** Replaced the overstated "astronomical" wording
+  in `KNOWN-GAPS.md` §7 and `README` with the actual figures: KEK id is a 48-bit truncation of
+  SHA-256(salt); the birthday bound is ≈ 2²⁴; at the enforced `MaxKekCount = 1024` cap the
+  worst-case accidental-collision probability is on the order of 2⁻²⁹ (≈ 1 in 540 million); at
+  typical operational counts (single digits to ~100) it is 2⁻³⁶ or smaller. Operationally
+  negligible — but not cryptographically astronomical. Behaviour is unchanged: `Rotate` refuses
+  to clobber an existing KEK id, and Import's salt-id consistency check detects mismatches.
+
+### Added
+
+- **`SECURITY.md` — "Recommended Argon2id profile in production"**, a new section that pins
+  `Moderate` (256 MiB / 4 iterations / parallelism 4) as the production floor against an
+  attacker who has obtained the keyring metadata and is mounting an **offline GPU/ASIC-accelerated
+  passphrase guess**. `Sensitive` (2 GiB) for long-lived master KEKs. `Interactive` (64 MiB)
+  only when latency budget is the binding constraint. `LowMemory` (19 MiB) is **not** a general
+  production setting. Linked from the README's "Security posture" section and from
+  `docs/deployment.md` §4 as authoritative.
+- **`Argon2idKatTests`** — a pinned Known-Answer Test suite:
+  - `Rfc9106_AppendixA3_Argon2id_KnownAnswer` anchors the underlying Argon2id implementation to
+    the **RFC 9106 §A.3 published reference vector** (password 32×0x01, salt 16×0x02, secret
+    8×0x03, AD 12×0x04, t=3, m=32 KiB, p=4, tag length 32 — expected
+    `0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659`).
+  - `LocalProvider_PinnedKeyId_FromPinnedSalt` pins the KeyId derivation
+    (`"local-" + hex(SHA-256(salt)[0..6])`) for a known salt.
+  - `LocalProvider_PinnedVerifier_FromPinnedInputs` pins the 32-byte HMAC-SHA256 verifier for
+    chosen `(passphrase, salt, options)` inputs, with in-fixture determinism and cross-process
+    reproducibility cross-checks before the value was baked.
+  - `Rotate_RejectsExplicitDuplicateSalt` exercises the rotation-collision rejection path.
+- **`VerifierTests.Import_FromV2Token_With16ByteVerifier_StillImports`** — a regression test
+  that hand-crafts a v2 token (16-byte truncated verifier) into the wire format, decodes it, and
+  proves both branches of the new prefix-compare path: correct passphrase imports cleanly,
+  wrong passphrase is rejected up front with `"Verifier mismatch"`.
+
+### Documentation
+
+- `KNOWN-GAPS.md` §1 cross-links the README's new scope note. §4 documents the actual KeyId
+  truncation length and the collision-rejection behaviour explicitly. §7 replaces the
+  "astronomical" claim with the honest birthday bound and refers back to §4 for the full treatment.
+- `docs/deployment.md` §4 now defers to `SECURITY.md` as authoritative for the recommended
+  production Argon2id profile.
+- `LocalKekMetadata.Verifier` and `LocalKeyringMetadata` XML docs describe the v1 / v2 / v3
+  width matrix and the prefix-compare semantics explicitly.
+
 ## [0.4.0-preview.1] — 2026-05-31
 
 The first production-shaped preview. **One package** now contains the hardened core, the

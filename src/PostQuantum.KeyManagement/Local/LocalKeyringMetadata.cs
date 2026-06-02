@@ -11,24 +11,28 @@ namespace PostQuantum.KeyManagement.Local;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This blob contains salts, Argon2id cost parameters, and (in v2 tokens) a short non-secret KEK
+/// This blob contains salts, Argon2id cost parameters, and (in v2+ tokens) a non-secret KEK
 /// verifier — never key material or passphrases — so it is safe to store alongside your data.
 /// Recovering usable keys still requires the original passphrases via a <see cref="PassphraseResolver"/>.
 /// </para>
 /// <para>
-/// <b>Format versions:</b> v0.3 of the library writes <see cref="CurrentFormatVersion"/> (currently 2)
-/// tokens that carry a per-KEK verifier so wrong passphrases are caught at import. v1 tokens
-/// produced by earlier versions still decode for backward compatibility — they simply do not
-/// surface the import-time check; a wrong passphrase will still be rejected at first unwrap by
-/// AES-GCM authentication.
+/// <b>Format versions:</b> v0.4.0-preview.2+ of the library writes <see cref="CurrentFormatVersion"/>
+/// (currently 3) tokens that carry a 32-byte per-KEK HMAC-SHA256 verifier. v2 tokens (16-byte
+/// truncated verifier, written by 0.3 / 0.4-preview.1) and v1 tokens (no verifier, written by
+/// 0.2 and earlier) still decode for backward compatibility. The verifier check at import time
+/// is constant-time and compares whatever width the persisted token carries against the matching
+/// prefix of the recomputed 32-byte verifier — so v2 keyrings continue to detect wrong passphrases
+/// at import under the new reader. v1 tokens still surface a wrong passphrase only at first unwrap,
+/// via AES-GCM authentication.
 /// </para>
 /// </remarks>
 public sealed record LocalKeyringMetadata
 {
-    /// <summary>The format version written by <see cref="Encode"/> on this library version.</summary>
-    public const byte CurrentFormatVersion = 2;
+    /// <summary>The format version written by <see cref="Encode"/> on this library version (v3 widens the verifier to 32 bytes).</summary>
+    public const byte CurrentFormatVersion = 3;
 
-    private const byte LegacyFormatVersion = 1;
+    private const byte V2FormatVersion = 2;
+    private const byte V1FormatVersion = 1;
 
     /// <summary>
     /// Safety ceiling on the number of KEKs a single token may declare. Production deployments use
@@ -124,7 +128,7 @@ public sealed record LocalKeyringMetadata
         int offset = 0;
 
         byte version = PortableEncoding.ReadByte(data, ref offset);
-        if (version is not (LegacyFormatVersion or CurrentFormatVersion))
+        if (version is not (V1FormatVersion or V2FormatVersion or CurrentFormatVersion))
         {
             throw new FormatException($"Unsupported keyring-metadata format version: {version}.");
         }
@@ -145,8 +149,11 @@ public sealed record LocalKeyringMetadata
             int memory = PortableEncoding.ReadInt32(data, ref offset);
             int iterations = PortableEncoding.ReadInt32(data, ref offset);
             byte[]? verifier = null;
-            if (version >= CurrentFormatVersion)
+            if (version >= V2FormatVersion)
             {
+                // v2 stored the first 16 bytes of HMAC-SHA256; v3 stores the full 32 bytes.
+                // Import compares whatever width is persisted against the matching prefix of the
+                // recomputed verifier, in constant time, so both widths are accepted.
                 byte[] raw = PortableEncoding.ReadBytes(data, ref offset);
                 verifier = raw.Length == 0 ? null : raw;
             }

@@ -40,9 +40,11 @@ release; see [`future.md`](future.md) for the 1.0 checklist.
 - **Strong content keys.** 256-bit keys from the platform CSPRNG (`RandomNumberGenerator`).
 - **Brute-force resistance for passphrases.** The local provider stretches passphrases with Argon2id
   (memory-hard), with tunable cost via `LocalKekOptions` (presets aligned to RFC 9106 / OWASP).
-- **Early detection of a wrong passphrase.** Keyring metadata (v2) carries a 16-byte HMAC-SHA256
+- **Early detection of a wrong passphrase.** Keyring metadata (v3) carries a 32-byte HMAC-SHA256
   verifier per KEK; `Import` checks it in constant time so wrong passphrases are rejected up front
-  rather than as a delayed authentication failure.
+  rather than as a delayed authentication failure. v2 tokens (16-byte truncated verifier) and v1
+  tokens (no verifier) still import — the constant-time comparison handles either width via a
+  prefix match against the recomputed 32-byte verifier.
 - **Hostile-input resistance.** Every token decoder uses overflow-safe length arithmetic and caps
   every length-prefixed field; the keyring decoder additionally caps the number of KEKs.
   `TryDecode` overloads exist for inputs from untrusted sources.
@@ -76,6 +78,28 @@ release; see [`future.md`](future.md) for the 1.0 checklist.
 - **External audit.** This library has been written with care, automated tests, static analysers,
   a hostile-input test suite, and a published threat model — but it has **not yet** had a
   third-party cryptographic review. That work is tracked in [`future.md`](future.md).
+
+## Recommended Argon2id profile in production
+
+`LocalKekOptions` ships four presets aligned to RFC 9106 and OWASP. For the stated threat model —
+an attacker who has obtained the persisted keyring metadata (salts + parameters + verifier) and is
+mounting an **offline GPU/ASIC-accelerated passphrase guess** — the picks are:
+
+| Use case                                    | Preset       | Why                                                                                  |
+| ------------------------------------------- | ------------ | ------------------------------------------------------------------------------------ |
+| **Production floor** (general server-side)  | `Moderate`   | 256 MiB / 4 iterations / parallelism 4. Buys meaningful margin against GPU/ASIC offline guessing while keeping derivation under ~1 s on modern hardware. |
+| **Long-lived master KEKs** (root of trust)  | `Sensitive`  | 2 GiB / 1 iteration / parallelism 4 — RFC 9106 §4 first recommendation. Derived once per process or per rotation; pay the cost. |
+| Latency-constrained server                  | `Interactive`| 64 MiB / 3 iterations / parallelism 4. Acceptable when the host is hardened against memory exfiltration and latency budget is the binding constraint. |
+| Constrained host / CI                       | `LowMemory`  | OWASP minimum (19 MiB / 2 iterations / parallelism 1). **Not** a general production setting. |
+
+Argon2id derivation is **one-shot** — once at startup, once per rotation — never on the request
+path. That means the latency cost is paid rarely and you should pick the highest preset whose
+one-shot latency you can afford. Tune by measuring on production-shape hardware; whatever you pick
+is recorded per-KEK in the keyring metadata so future imports reproduce the same KEK.
+
+> The `LowMemory` preset is OWASP's *floor* for environments where 64 MiB is genuinely unaffordable;
+> it is **not** the right answer for production unless you have measured and ruled out everything
+> stronger. The library's instance defaults match `Interactive`, not `LowMemory`.
 
 ## Cryptographic dependencies
 

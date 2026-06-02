@@ -20,10 +20,11 @@ namespace PostQuantum.KeyManagement.Local;
 /// <para>
 /// <b>Persistence:</b> the in-memory key ring can be exported via <see cref="ExportMetadata"/>
 /// as a non-secret <see cref="LocalKeyringMetadata"/> and reconstructed in a later process with
-/// <see cref="Import"/>. The export carries each KEK's salt, Argon2id parameters, and a 16-byte
-/// HMAC-SHA256 verifier; the verifier lets <see cref="Import"/> detect a wrong passphrase
-/// immediately instead of as a delayed <see cref="AuthenticationTagMismatchException"/> at first
-/// unwrap.
+/// <see cref="Import"/>. The export carries each KEK's salt, Argon2id parameters, and a 32-byte
+/// HMAC-SHA256 verifier (v3 tokens; v2 tokens persisted the first 16 bytes of the same value and
+/// continue to import correctly via a constant-time prefix comparison). The verifier lets
+/// <see cref="Import"/> detect a wrong passphrase immediately instead of as a delayed
+/// <see cref="AuthenticationTagMismatchException"/> at first unwrap.
 /// </para>
 /// <para>
 /// <b>Thread-safety:</b> all members are safe to invoke concurrently from multiple threads.
@@ -167,7 +168,7 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
 
     /// <summary>
     /// Exports the non-secret structure of the entire key ring — every KEK's salt, Argon2id cost
-    /// parameters, and a 16-byte HMAC-SHA256 verifier, plus the active KEK id. Persist the result
+    /// parameters, and a 32-byte HMAC-SHA256 verifier, plus the active KEK id. Persist the result
     /// (optionally via <see cref="LocalKeyringMetadata.Encode"/>) and pair it with the passphrases at
     /// import time to reconstruct this provider in a later process. The export contains no key
     /// material or passphrases.
@@ -236,12 +237,17 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
                         $"Re-derived key id '{kek.KeyId}' does not match metadata key id '{kekMetadata.KeyId}'; the salt is corrupt.");
                 }
 
-                // If a verifier was persisted (v2 tokens), compare it in constant time. A mismatch
-                // means the resolved passphrase is wrong; fail fast with a clear message instead of
-                // surfacing it later as an AuthenticationTagMismatchException at first unwrap.
+                // If a verifier was persisted (v2 / v3 tokens), compare it in constant time. v3
+                // stores the full 32-byte HMAC-SHA256; v2 stores the first 16 bytes of the same
+                // value. Compare whatever width the token carries against the matching prefix of
+                // the recomputed 32-byte verifier — the comparison is constant-time and accepts
+                // both widths without weakening the v3 check. A mismatch means the resolved
+                // passphrase is wrong; fail fast with a clear message instead of surfacing it
+                // later as an AuthenticationTagMismatchException at first unwrap.
                 if (kekMetadata.Verifier is { Length: > 0 } expected)
                 {
-                    if (!CryptographicOperations.FixedTimeEquals(expected, kek.Verifier))
+                    if (expected.Length > kek.Verifier.Length
+                        || !CryptographicOperations.FixedTimeEquals(expected, kek.Verifier.AsSpan(0, expected.Length)))
                     {
                         kek.Dispose();
                         throw new InvalidOperationException(

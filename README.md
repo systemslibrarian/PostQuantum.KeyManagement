@@ -5,9 +5,17 @@
 [![Status](https://img.shields.io/badge/status-preview-orange.svg)](#project-status)
 [![NuGet](https://img.shields.io/badge/NuGet-PostQuantum.KeyManagement-004880.svg)](https://www.nuget.org/packages/PostQuantum.KeyManagement)
 
-> **Clean, high-level key management and rotation for post-quantum-ready encryption in .NET.**
-> The default safe answer to: *"How do I encrypt data with rotatable keys without building my own
-> dangerous key-management layer?"*
+> **Clean, high-level envelope-encryption key management for .NET — symmetric, rotatable, honestly scoped.**
+
+> ⚠️ **What "PostQuantum" means in this package today.** The only "post-quantum" property here is
+> **symmetric-by-key-size**: AES-256-GCM (wrapping) and Argon2id (passphrase stretching) keep useful
+> margin against a quantum adversary because Grover's algorithm only halves the effective security
+> of a symmetric primitive — AES-256 retains ~128-bit post-quantum strength. **There is no
+> post-quantum asymmetric KEM in this release** — no ML-KEM, no X-Wing, no hybrid wrap. PQ
+> asymmetric KEK-wrapping is roadmap, not shipped. See
+> [`KNOWN-GAPS.md` §1](KNOWN-GAPS.md#1-post-quantum-is-currently-a-symmetric-only-claim) for the
+> precise scope and [`future.md`](future.md) for the planned PQ-wrapping layer. We would rather
+> under-claim than overstate.
 
 `PostQuantum.KeyManagement` is the small, honest abstraction over the part of cryptography that is
 easiest to get wrong: **managing the keys that protect your keys.** It implements the
@@ -18,7 +26,7 @@ code runs against a local passphrase today and a cloud HSM tomorrow.
 It is the natural companion to [`PostQuantum.FileEncryption`](https://github.com/systemslibrarian),
 [`PostQuantum.Jwt`](https://github.com/systemslibrarian), and the rest of the `PostQuantum.*` family.
 
-> ⚠️ **Preview (`0.4.0-preview.1`).** The API surface is small and may still change before `1.0`.
+> ⚠️ **Preview (`0.4.0-preview.2`).** The API surface is small and may still change before `1.0`.
 > Read [KNOWN-GAPS.md](KNOWN-GAPS.md) before relying on it — it is deliberately blunt about what
 > this library does and does **not** yet do. The full release notes are in
 > [CHANGELOG.md](CHANGELOG.md); the path to `1.0`, cloud KMS providers, and external review is
@@ -310,17 +318,24 @@ KMS) are tracked in [`future.md`](future.md); the extension point is documented 
 
 ## Security posture
 
+**Scope of the "post-quantum" claim.** Today this library's only post-quantum property is
+**symmetric-by-key-size** — AES-256-GCM and Argon2id retain useful margin against a quantum
+adversary because Grover only halves their security. **No post-quantum asymmetric KEM is shipped
+in this release** (no ML-KEM, no X-Wing, no hybrid wrap); PQ asymmetric KEK-wrapping is roadmap.
+Do not describe deployments built on this release as "quantum-safe key exchange." See
+[`KNOWN-GAPS.md` §1](KNOWN-GAPS.md#1-post-quantum-is-currently-a-symmetric-only-claim) for the
+precise scope and [`future.md`](future.md) for the planned layer.
+
 - **Content keys** are 256-bit and drawn from `RandomNumberGenerator`.
 - **Wrapping** uses **AES-256-GCM** (authenticated): tampering with a wrapped key is detected, never
   silently decrypted to garbage.
 - **Local KEK derivation** uses **Argon2id** with presets aligned to RFC 9106 §4 and OWASP, tunable
-  via `LocalKekOptions`.
+  via `LocalKekOptions`. See [`SECURITY.md`](SECURITY.md#recommended-argon2id-profile-in-production)
+  for the recommended production profile.
 - **Memory hygiene:** plaintext key material lives in `ContentKey`, which zeroes its buffer on
   `Dispose`. Always wrap content keys in `using`.
-- **Quantum stance:** the symmetric layer here (AES-256, Argon2id) is already considered
-  quantum-resistant by key size. This library does **not yet** add a post-quantum *asymmetric* KEM
-  (e.g. ML-KEM) for key wrapping — that, and hybrid wrapping, are tracked in
-  [KNOWN-GAPS.md](KNOWN-GAPS.md). We would rather under-claim than overstate.
+- **Quantum stance:** see the **Scope of the "post-quantum" claim** note above. We would rather
+  under-claim than overstate. ([`KNOWN-GAPS.md` §1](KNOWN-GAPS.md#1-post-quantum-is-currently-a-symmetric-only-claim))
 - **Thread-safety:** `LocalContentKeyProvider` is safe for concurrent use. Rotation, wrap, and
   unwrap serialise on a private lock so a rotating thread cannot dispose a KEK that another thread
   is using.
@@ -351,11 +366,16 @@ Please report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-`0.4.0-preview.1` — the preview is now production-shaped: a hardened core (HMAC-SHA256 verifier,
-thread-safety, hostile-input rejection), a clean DI integration package with atomic keyring
-persistence and a health check, three end-to-end samples, and a complete documentation set
-(threat model, versioning policy, deployment guide). Cloud KMS providers, external review, and
-`1.0` are next — the concrete plan is in [`future.md`](future.md).
+`0.4.0-preview.2` — hardening and honesty pass on top of preview.1, backward-compatible (v1/v2
+keyrings still import). Widens the wrong-passphrase verifier from 16 to 32 bytes (full HMAC-SHA256;
+v3 keyring format, with constant-time prefix-compare for v2), front-loads the honest scope of the
+"PostQuantum" claim (symmetric-by-key-size only — no asymmetric PQ KEM yet), pins a recommended
+production Argon2id profile in [`SECURITY.md`](SECURITY.md#recommended-argon2id-profile-in-production)
+against an offline GPU/ASIC adversary, replaces the overstated "astronomical" wording on KEK-id
+collisions with the honest birthday bound, and adds a pinned KAT suite anchored to RFC 9106 §A.3.
+No crypto-logic changes — AES-GCM wrap, Argon2id parameters, and memory zeroing are byte-for-byte
+identical to preview.1. Cloud KMS providers, external review, and `1.0` are next — the concrete
+plan is in [`future.md`](future.md).
 
 ## Building from source
 

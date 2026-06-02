@@ -25,14 +25,16 @@ public sealed record LocalKekMetadata
     public required int Iterations { get; init; }
 
     /// <summary>
-    /// Optional 16-byte HMAC-SHA256 tag over a fixed library label, keyed by the KEK. If present,
+    /// Optional HMAC-SHA256 tag over a fixed library label, keyed by the KEK. If present,
     /// <see cref="LocalContentKeyProvider.Import(LocalKeyringMetadata,PassphraseResolver)"/> recomputes
     /// it during derivation and rejects the passphrase if the tags differ — failing fast with a
     /// clear error instead of a delayed <c>AuthenticationTagMismatchException</c> at first unwrap.
     /// </summary>
     /// <remarks>
-    /// Non-secret. Absent on metadata produced by v0.2 (or earlier) of the library; present and
-    /// checked on metadata produced by v0.3 and newer.
+    /// Non-secret. Width is 32 bytes on v3 tokens (current); 16 bytes on v2 tokens (written by
+    /// 0.3 / 0.4-preview.1); absent on v1 tokens (written by 0.2 and earlier). Import compares
+    /// whatever width is persisted against the matching prefix of the recomputed 32-byte verifier
+    /// in constant time, so both widths are accepted without weakening the v3 check.
     /// </remarks>
     public byte[]? Verifier { get; init; }
 

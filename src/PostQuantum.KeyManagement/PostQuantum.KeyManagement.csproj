@@ -13,7 +13,15 @@
   <!-- ───────────────────────── NuGet package metadata ───────────────────────── -->
   <PropertyGroup>
     <PackageId>PostQuantum.KeyManagement</PackageId>
-    <Version>0.4.0-preview.1</Version>
+    <Version>0.4.0-preview.2</Version>
+    <!--
+      AssemblyVersion stays flat at 0.4.0.0 across all 0.4.x previews so that downstream
+      consumers do not have to bump references for every preview iteration. FileVersion
+      encodes the preview iteration in the revision slot (0.4.0.N) so on-disk DLLs remain
+      distinguishable per preview when diagnosing field installations.
+    -->
+    <AssemblyVersion>0.4.0.0</AssemblyVersion>
+    <FileVersion>0.4.0.2</FileVersion>
     <Authors>Paul Clark</Authors>
     <Company>Systems Librarian</Company>
     <Product>PostQuantum.KeyManagement</Product>
@@ -27,7 +35,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) Paul Clark</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>0.4.0-preview.1: Production-shaped first preview. ONE package now contains the core abstraction plus first-class Microsoft.Extensions.DependencyInjection integration (AddPostQuantumKeyManagement, IKeyringStore with an atomic Windows-aware FileKeyringStore, and KeyManagementHealthCheck). Ships three end-to-end samples (Minimal API, Worker Service with scheduled rotation, EF Core with per-row envelope encryption that survives KEK rotation). Includes TryDecode overloads on WrappedContentKey and LocalKeyringMetadata for untrusted input, boundary validation rejecting empty passphrases at the library boundary, safe ToString() on the records that carry byte arrays, and Windows-aware bounded retry on atomic file swap. Ships docs/threat-model.md (ten numbered security invariants), docs/versioning.md (SemVer and wire-format policy), and docs/deployment.md (production operational checklist). Multi-targets net8.0/net9.0/net10.0 with deterministic builds, SourceLink, and IsAotCompatible. Future cloud KMS providers (Azure Key Vault, AWS KMS, GCP KMS) will ship as separate packages — the path is mapped out in future.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.4.0-preview.2: Hardening + honesty pass on top of 0.4.0-preview.1. Backward-compatible feature/hardening release — v1 and v2 keyrings still import. (1) Wrong-passphrase verifier widened from 16 to 32 bytes (full HMAC-SHA256) to match the library's 256-bit posture; keyring format bumped v2 → v3; v1 (no verifier) and v2 (16-byte truncated verifier) still decode, with the v3 reader doing a constant-time prefix-compare so existing keyrings keep detecting wrong passphrases at import. (2) README opening and "Security posture" section now lead with the honest scope of the "PostQuantum" claim — the only post-quantum property today is symmetric-by-key-size (AES-256-GCM + Argon2id, ~128-bit post-quantum strength under Grover); no ML-KEM / X-Wing / hybrid asymmetric KEM is shipped in this release. (3) SECURITY.md now pins a "Recommended Argon2id profile in production" — Moderate as the production floor (256 MiB / 4 iter / parallelism 4), Sensitive for long-lived master KEKs, against an offline GPU/ASIC-accelerated passphrase guess. (4) KNOWN-GAPS.md fixes the overstated "astronomical" wording on KEK-id collisions to honest figures (48-bit truncation, birthday bound ≈ 2^24, ≈ 2^-29 worst-case at the MaxKekCount=1024 cap). (5) New Argon2id KAT suite (Argon2idKatTests) anchored to the RFC 9106 §A.3 published reference vector plus a pinned-inputs verifier vector and a rotation-collision rejection test. (6) 0.4.0-preview.1 changes carry forward: ONE package with DI integration, FileKeyringStore, KeyManagementHealthCheck, three end-to-end samples, threat-model / versioning / deployment docs, TryDecode overloads, safe ToString(). Multi-targets net8.0/net9.0/net10.0 with deterministic builds, SourceLink, IsAotCompatible. No crypto-logic changes (AES-GCM wrap, Argon2id parameters, and memory zeroing are byte-for-byte identical to 0.4.0-preview.1).</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- ───────────────────────────── SourceLink / symbols ─────────────────────── -->

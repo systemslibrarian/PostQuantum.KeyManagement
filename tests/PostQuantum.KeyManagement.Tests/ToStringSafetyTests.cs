@@ -40,7 +40,7 @@ public sealed class ToStringSafetyTests
 
         Assert.Contains($"KeyId = {meta.KeyId}", s, StringComparison.Ordinal);
         Assert.Contains("Salt = <16 bytes>", s, StringComparison.Ordinal);
-        Assert.Contains("Verifier = <16 bytes>", s, StringComparison.Ordinal);
+        Assert.Contains("Verifier = <32 bytes>", s, StringComparison.Ordinal);
         Assert.Contains($"Iterations = {meta.Iterations}", s, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Byte[]", s, StringComparison.Ordinal);
     }

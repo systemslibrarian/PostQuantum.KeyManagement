@@ -74,6 +74,12 @@ encryption. The integrity of the wrap is guaranteed by AES-GCM (see threat-model
 
 ## 4. Argon2id work factor in production
 
+The recommended production profile against an offline GPU/ASIC-accelerated passphrase guess is
+documented in [`SECURITY.md` — Recommended Argon2id profile in production](../SECURITY.md#recommended-argon2id-profile-in-production)
+and is **authoritative** when it disagrees with the framing below. In short: `Moderate` is the
+production floor; `Sensitive` for long-lived master KEKs; `Interactive` only when latency budget
+is the binding constraint; `LowMemory` only for constrained hosts.
+
 The `LocalKekOptions` presets are tuned to RFC 9106 / OWASP:
 
 | Preset       | Memory | Iterations | Parallelism | Typical use                                        |

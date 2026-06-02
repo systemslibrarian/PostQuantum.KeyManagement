@@ -5,7 +5,7 @@ This file is the honest counterpart to the README. It lists what `PostQuantum.Ke
 something here surprises you *after* you shipped, that is a documentation bug — please open an
 issue.
 
-Status as of **`0.4.0-preview.1`**.
+Status as of **`0.4.0-preview.2`**.
 
 For the precise threat model and the security invariants we DO commit to, see
 [`docs/threat-model.md`](docs/threat-model.md). For the production operational checklist, see
@@ -18,12 +18,14 @@ audit gaps below, see [`future.md`](future.md).
   stretching), and **HMAC-SHA256** (the keyring verifier). All three are considered
   quantum-resistant *by key size* — Grover's algorithm only halves the effective security of a
   symmetric primitive, so AES-256 retains ~128-bit post-quantum strength.
-- **There is no post-quantum asymmetric primitive here yet.** No ML-KEM (Kyber), no hybrid KEM, no
-  PQ signatures. The library name reflects the *family* it belongs to and the direction of
-  travel, **not** a claim that the current release performs PQ key exchange.
+- **There is no post-quantum asymmetric primitive here yet.** No ML-KEM (Kyber), no X-Wing, no
+  hybrid KEM, no PQ signatures. The library name reflects the *family* it belongs to and the
+  direction of travel, **not** a claim that the current release performs PQ key exchange.
 - The asymmetric story matters most for cloud/HSM wrapping (where a KEK wraps a DEK with RSA/ECC)
   and for cross-party key exchange. That is exactly where a PQ KEM / hybrid mode is planned. Until
   then, do not describe deployments built on this release as "quantum-safe key exchange."
+- The README opening and `## Security posture` section both lead with this scope note so it is
+  impossible to miss when reading the front page.
 
 ## 2. No cloud KMS providers are implemented yet
 
@@ -53,13 +55,23 @@ audit gaps below, see [`future.md`](future.md).
 
 ## 4. KEK identifiers are derived from the salt
 
-- A local KEK's id is `"local-" + hex(SHA-256(salt)[..6])`. This makes ids stable and reproducible
-  (same salt → same id) without persisting extra state.
-- Consequence: two different passphrases used with the **same** salt produce the **same** key id
-  but **different** key material. **As of `0.3`** this is caught at import time by the per-KEK
-  HMAC-SHA256 verifier (mismatch → `InvalidOperationException` naming the offending key id), and
-  also at unwrap time by AES-GCM authentication. Tokens written by `0.2` and earlier have no
-  verifier; a wrong passphrase against those tokens still surfaces — but only at first unwrap.
+- A local KEK's id is `"local-" + hex(SHA-256(salt)[..6])` — a **48-bit** truncation of SHA-256.
+  This makes ids stable and reproducible (same salt → same id) without persisting extra state.
+- **Collision surface (two distinct salts → same id).** The birthday bound is ≈ 2²⁴, so at the
+  enforced `MaxKekCount = 1024` cap the worst-case accidental collision probability is on the
+  order of 2⁻²⁹ (≈ 1 in 540 million); at typical operational counts (single digits to ~100) it is
+  on the order of 2⁻³⁶ or smaller. Operationally negligible — but **not cryptographically
+  astronomical**, which is why we document the actual bound rather than gloss it. A collision is
+  refused by `Rotate` (see §7) and detected by Import's salt-id consistency check, so the failure
+  mode if one ever occurred would be a clear `InvalidOperationException`, not silent corruption.
+  If you want strictly cryptographic margin on KeyIds, widen the truncation in your own fork; the
+  default trades 48 bits of id length for short, copy-pasteable identifiers in logs and tokens.
+- Consequence (same salt → same id but different key material): two different passphrases used
+  with the **same** salt produce the **same** key id but **different** key material. **As of `0.3`**
+  this is caught at import time by the per-KEK HMAC-SHA256 verifier (mismatch →
+  `InvalidOperationException` naming the offending key id), and also at unwrap time by AES-GCM
+  authentication. Tokens written by `0.2` and earlier have no verifier; a wrong passphrase against
+  those tokens still surfaces — but only at first unwrap.
 - Best practice remains: use distinct salts per KEK (the default when you do not supply one).
 
 ## 5. Content-key parameters are fixed
@@ -89,7 +101,10 @@ audit gaps below, see [`future.md`](future.md).
   content key with AES-256-GCM is microseconds.
 - `Rotate` with an explicit salt that collides with an existing KEK id throws
   `InvalidOperationException` instead of silently replacing the existing entry. The default
-  `Rotate` overload (random salt) is unaffected; collisions there are astronomical.
+  `Rotate` overload (random salt) is unaffected; collisions there are operationally negligible —
+  with the 48-bit truncated KeyId and the `MaxKekCount = 1024` cap the worst-case birthday
+  probability is ≈ 2⁻²⁹, and ≈ 2⁻³⁶ or smaller at typical KEK counts. See §4 for the full
+  treatment and why we document the actual bound rather than say "astronomical."
 
 ## 8. Not independently audited yet
 
@@ -115,6 +130,12 @@ audit gaps below, see [`future.md`](future.md).
   policy, deployment guide, `TryDecode` overloads for untrusted input, safe `ToString()` on every
   record that carries byte arrays, and Windows-aware atomic file persistence with bounded retry on
   the reader-writer race.
+- ✅ **Done in `0.4-preview.2`:** wrong-passphrase verifier widened to 32 bytes (full HMAC-SHA256;
+  v3 keyring format with constant-time prefix-compare back-compat for v1 / v2 tokens), README and
+  Security Posture rewritten to front-load the honest symmetric-only PQ scope, recommended
+  production Argon2id profile pinned in `SECURITY.md` against an offline GPU/ASIC adversary,
+  KEK-id collision wording corrected from "astronomical" to the honest birthday bound, and a
+  pinned KAT suite anchored to RFC 9106 §A.3.
 - The first **cloud KMS provider** (likely Azure Key Vault) as a separate package, validating the
   extension point against a real service.
 - The second **cloud KMS provider** (likely AWS KMS) to lock the abstraction in.
