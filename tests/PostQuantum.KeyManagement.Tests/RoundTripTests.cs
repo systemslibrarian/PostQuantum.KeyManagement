@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using PostQuantum.KeyManagement.Local;
@@ -90,6 +91,25 @@ public sealed class RoundTripTests
 
         Assert.Equal(stored.KeyId, second.ActiveKeyId);
         Assert.True(CryptographicOperations.FixedTimeEquals(original, recovered.Key));
+    }
+
+    [Fact]
+    public async Task ActiveSalt_IsADefensiveCopy_MutatingItDoesNotCorruptTheProvider()
+    {
+        using LocalContentKeyProvider provider = LocalContentKeyProvider.Create("defensive copy", TestDefaults.FastKek);
+        using ContentKey created = await provider.CreateContentKeyAsync();
+        byte[] original = created.Key.ToArray();
+
+        // ReadOnlyMemory<byte> can be unwrapped to its backing array; try to corrupt the salt.
+        Assert.True(MemoryMarshal.TryGetArray(provider.ActiveSalt, out ArraySegment<byte> segment));
+        segment.Array![segment.Offset] ^= 0xFF;
+
+        // The provider must be unaffected: export/import round-trips and the key still unwraps.
+        LocalKeyringMetadata metadata = provider.ExportMetadata();
+        using LocalContentKeyProvider rehydrated = LocalContentKeyProvider.Import(metadata, _ => "defensive copy".AsSpan());
+        using ContentKey unwrapped = await rehydrated.UnwrapAsync(created.WrappedKey);
+
+        Assert.True(CryptographicOperations.FixedTimeEquals(original, unwrapped.Key));
     }
 
     [Fact]

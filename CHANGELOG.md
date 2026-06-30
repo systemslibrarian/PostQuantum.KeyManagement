@@ -4,6 +4,19 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the library uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-06-30
+
+Patch: defensive-copy hardening. No wire-format or public-API change; a drop-in over 1.0.0.
+
+### Fixed
+
+- **`LocalContentKeyProvider.ActiveSalt` now returns a defensive copy** of the active KEK salt
+  rather than a `ReadOnlyMemory<byte>` over the internal array. The previous view could be unwrapped
+  via `MemoryMarshal.TryGetArray` and written through, mutating the active salt so a later
+  `ExportMetadata()` / `Import()` failed key-id re-derivation and permanently locked the keyring.
+  Not an eavesdropping vector (the DEK is never exposed) — an availability hazard, now closed. Added
+  a regression test (`ActiveSalt_IsADefensiveCopy_...`).
+
 ## [1.0.0] — 2026-06-30
 
 **First stable release.** The public API and the keyring/token wire formats are frozen; v1/v2/v3

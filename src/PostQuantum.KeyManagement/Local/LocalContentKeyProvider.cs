@@ -84,7 +84,10 @@ public sealed class LocalContentKeyProvider : ContentKeyProvider, IDisposable
             lock (_sync)
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
-                return _keyRing[_activeKeyId].Salt;
+                // Return a defensive copy: the underlying byte[] is internal mutable state, and a
+                // ReadOnlyMemory<byte> over it can be unwrapped via MemoryMarshal.TryGetArray and
+                // written through, corrupting the active KEK's salt (and thus the keyring).
+                return _keyRing[_activeKeyId].Salt.AsSpan().ToArray();
             }
         }
     }
