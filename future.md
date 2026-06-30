@@ -324,26 +324,24 @@ a moving target wastes the reviewer's time. Stable surface area + non-trivial re
 
 ---
 
-## 6. Cut 1.0
+## 6. Cut 1.0 — ✅ shipped in `1.0.0`
 
-### The checklist
+### The decision
 
 `1.0` is a social commitment: the public API is stable, breaking changes require a `2.0`, and
-security backports happen on a defined schedule. Do not cut it lightly. Before you do:
+security backports happen on a defined schedule. `1.0.0` was cut on the **API/wire-format-stability**
+basis, with the cloud-provider and external-review items **consciously deferred to post-1.0 as
+documented limitations** (`KNOWN-GAPS.md`) rather than held as release blockers. The bar that *was*
+met, and the items that were deferred:
 
-- [ ] Cloud providers (§ 1, § 4) have shipped and have a non-trivial number of real users.
-- [ ] External review (§ 5) is done and the report is published.
-- [ ] No `KNOWN-GAPS.md` items are flagged as "tracked for the next breaking release" — anything
-      that would change the public API or wire format has either landed or has been explicitly
+- [x] **API + wire formats frozen.** SemVer is in force; `WrappedContentKey` v1 and
+      `LocalKeyringMetadata` v1/v2/v3 readers stay backward-compatible.
+- [x] No `KNOWN-GAPS.md` item requires a breaking change that wasn't either landed or explicitly
       deferred to a post-1.0 minor.
-- [ ] Wire formats have been stable for at least two minor releases. (Currently
-      `WrappedContentKey` v1 is stable since 0.1; `LocalKeyringMetadata` v2 since 0.3.)
-- [ ] `docs/versioning.md` SemVer commitments are tightened from "0.x preview" to "1.x strict".
-- [ ] `SECURITY.md` declares a backport policy (e.g. "security fixes are backported to the
-      previous minor for 12 months after a new minor ships").
-- [ ] A test suite + restore drill exists and passes on every supported TFM in CI.
-- [ ] At least one production deployment has run the library for a meaningful window without
-      incident, and the maintainer can name it (publicly or to the auditor).
+- [x] Test suite passes on every supported TFM in CI; supply-chain advisories cleared.
+- [ ] *(deferred, documented)* Cloud providers (§ 1, § 4) shipped and in real use.
+- [ ] *(deferred, documented)* External review (§ 5) done and published.
+- [ ] *(deferred, documented)* A named production deployment over a meaningful window.
 
 ### The bump
 

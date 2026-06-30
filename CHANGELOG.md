@@ -4,6 +4,31 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the library uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-06-30
+
+**First stable release.** The public API and the keyring/token wire formats are frozen; v1/v2/v3
+keyrings all still import. No crypto-logic changes since `0.4.0-preview.2` — AES-256-GCM content-key
+wrap, Argon2id KEK derivation, the HMAC-SHA256 keyring verifier, and memory zeroing are byte-for-byte
+identical. 1.0 is the SemVer commitment plus one supply-chain fix.
+
+### Fixed
+
+- **Supply chain:** the `EfCore.Sample` moved to `Microsoft.EntityFrameworkCore.Sqlite` 10 and the
+  patched `SQLitePCLRaw` 3.0.x, clearing the high-severity advisory GHSA-2m69-gcr7-jv3q that the
+  transitive 2.1.x native bundle carried. Samples are not part of the shipped package; this keeps the
+  full-solution build and CI clean.
+
+### Changed
+
+- Version → `1.0.0`; `AssemblyVersion` → `1.0.0.0`. The "preview" framing is removed from the README,
+  KNOWN-GAPS, and roadmap.
+
+### Documented limitations carried into 1.0 (not blockers)
+
+- Post-quantum scope is **symmetric-by-key-size only** (no asymmetric KEM in this package).
+- **No third-party cryptographic audit yet** (on the post-1.0 roadmap).
+- **Cloud KMS providers** remain an extension point, not yet shipped.
+
 ## [0.4.0-preview.2] — 2026-06-01
 
 A hardening + honesty pass on top of `0.4.0-preview.1`. Backward-compatible: v1 and v2 keyrings

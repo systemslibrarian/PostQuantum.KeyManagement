@@ -15,8 +15,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <!--
+      EF Core aligned to the net10 target. The 8.0.x line pulled SQLitePCLRaw.lib.e_sqlite3 2.1.x,
+      and the whole 2.1.x line carries the high-severity advisory GHSA-2m69-gcr7-jv3q; the fix is in
+      SQLitePCLRaw 3.0.x, which the EF Core 10 line references. The explicit bundle pin guarantees the
+      patched native SQLite regardless of the transitive graph. (Sample only — not shipped.)
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
   </ItemGroup>
 
 </Project>

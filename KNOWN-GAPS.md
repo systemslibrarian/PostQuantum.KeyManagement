@@ -5,7 +5,9 @@ This file is the honest counterpart to the README. It lists what `PostQuantum.Ke
 something here surprises you *after* you shipped, that is a documentation bug — please open an
 issue.
 
-Status as of **`0.4.0-preview.2`**.
+Status as of **`1.0.0`**. The gaps below are **documented limitations carried into 1.0**, not
+release blockers — 1.0 freezes the API and the keyring/token wire formats; these remain on the
+post-1.0 roadmap.
 
 For the precise threat model and the security invariants we DO commit to, see
 [`docs/threat-model.md`](docs/threat-model.md). For the production operational checklist, see
@@ -108,12 +110,12 @@ audit gaps below, see [`future.md`](future.md).
 
 ## 8. Not independently audited yet
 
-- This is a young preview written with care, automated tests, static analysers, a hostile-input
-  test suite, and a published threat model — but it has **not** had a third-party cryptographic
-  audit. Treat `0.x` accordingly.
+- `1.0.0` ships **without** a third-party cryptographic audit. It is written with care, automated
+  tests, static analysers, a hostile-input test suite, a pinned RFC 9106 Argon2id KAT, and a
+  published threat model — but no external review. This is a **documented limitation, not a hidden
+  one**: weigh it against your own risk tolerance.
 - The plan to commission a review is laid out in [`future.md`](future.md) (engagement paths, scope
-  letter, what to publish in the resulting report). It is gated behind cloud-provider stability —
-  reviewing a moving target wastes the reviewer's time.
+  letter, what to publish in the resulting report). The review is post-1.0 work.
 
 ---
 
@@ -136,13 +138,19 @@ audit gaps below, see [`future.md`](future.md).
   production Argon2id profile pinned in `SECURITY.md` against an offline GPU/ASIC adversary,
   KEK-id collision wording corrected from "astronomical" to the honest birthday bound, and a
   pinned KAT suite anchored to RFC 9106 §A.3.
+- ✅ **Done in `1.0.0`:** first stable release — API and keyring/token wire formats frozen
+  (v1/v2/v3 import preserved); SemVer commitment in force; EF Core sample moved to the patched
+  SQLitePCLRaw 3.0.x (advisory GHSA-2m69-gcr7-jv3q).
+
+**Post-1.0 roadmap** (the items below were previously framed as 1.0 gates; 1.0 shipped with them as
+documented limitations rather than blockers):
+
 - The first **cloud KMS provider** (likely Azure Key Vault) as a separate package, validating the
   extension point against a real service.
 - The second **cloud KMS provider** (likely AWS KMS) to lock the abstraction in.
 - Design work on a **post-quantum / hybrid asymmetric wrapping** layer (ML-KEM) for the KEK tier.
 - Configurable content-key size and wrapping algorithm.
 - External cryptographic review.
-- `1.0` once the above are in real use.
 
 ---
 

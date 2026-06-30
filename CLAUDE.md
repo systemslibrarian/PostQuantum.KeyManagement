@@ -66,9 +66,12 @@ Directory.Build.props                 # repo-wide build settings
 
 ## Versioning
 
-- Currently `0.3.0-preview.1`. Pre-`1.0` the API may change; note breaking changes in
-  `PackageReleaseNotes`, `CHANGELOG.md`, and the README status section.
+- Currently `1.0.0` — first stable release. The public API and the keyring/token wire formats are
+  **frozen**; SemVer applies. Post-1.0, breaking changes are major-version bumps; note them in
+  `PackageReleaseNotes`, `CHANGELOG.md`, and the README status section. Documented limitations
+  carried into 1.0 (symmetric-only PQ scope, no external audit yet, cloud KMS providers not yet
+  shipped) live in `KNOWN-GAPS.md` — they are limitations, not blockers.
 - The exported keyring token format is versioned (`CurrentFormatVersion` byte on
-  `LocalKeyringMetadata`; same pattern in `WrappedContentKey`). If you change the binary layout,
-  bump that version, keep `Decode` able to read prior versions when feasible, and reject unknown
-  versions.
+  `LocalKeyringMetadata`; same pattern in `WrappedContentKey`). v1/v2/v3 import is preserved. If you
+  must change the binary layout post-1.0, bump that version, keep `Decode` able to read prior
+  versions, and reject unknown versions.

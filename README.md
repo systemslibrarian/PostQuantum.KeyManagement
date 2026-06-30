@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Target](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4.svg)](#requirements)
-[![Status](https://img.shields.io/badge/status-preview-orange.svg)](#project-status)
+[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](#project-status)
 [![NuGet](https://img.shields.io/badge/NuGet-PostQuantum.KeyManagement-004880.svg)](https://www.nuget.org/packages/PostQuantum.KeyManagement)
 
 > **Clean, high-level envelope-encryption key management for .NET — symmetric, rotatable, honestly scoped.**
@@ -26,11 +26,12 @@ code runs against a local passphrase today and a cloud HSM tomorrow.
 It is the natural companion to [`PostQuantum.FileEncryption`](https://github.com/systemslibrarian),
 [`PostQuantum.Jwt`](https://github.com/systemslibrarian), and the rest of the `PostQuantum.*` family.
 
-> ⚠️ **Preview (`0.4.0-preview.2`).** The API surface is small and may still change before `1.0`.
-> Read [KNOWN-GAPS.md](KNOWN-GAPS.md) before relying on it — it is deliberately blunt about what
-> this library does and does **not** yet do. The full release notes are in
-> [CHANGELOG.md](CHANGELOG.md); the path to `1.0`, cloud KMS providers, and external review is
-> mapped out in [future.md](future.md).
+> ✅ **Stable (`1.0.0`).** The public API and the keyring/token wire formats are frozen; v1/v2/v3
+> keyrings all still import. Read [KNOWN-GAPS.md](KNOWN-GAPS.md) before relying on it — it is
+> deliberately blunt about the honest scope (notably: the post-quantum property here is
+> symmetric-by-key-size; no asymmetric KEM ships in this package) and the documented limitations
+> carried into 1.0 (no third-party audit yet; cloud KMS providers are an extension point, not yet
+> shipped). Release notes in [CHANGELOG.md](CHANGELOG.md); roadmap in [future.md](future.md).
 
 ---
 
@@ -366,16 +367,23 @@ Please report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-`0.4.0-preview.2` — hardening and honesty pass on top of preview.1, backward-compatible (v1/v2
-keyrings still import). Widens the wrong-passphrase verifier from 16 to 32 bytes (full HMAC-SHA256;
-v3 keyring format, with constant-time prefix-compare for v2), front-loads the honest scope of the
-"PostQuantum" claim (symmetric-by-key-size only — no asymmetric PQ KEM yet), pins a recommended
-production Argon2id profile in [`SECURITY.md`](SECURITY.md#recommended-argon2id-profile-in-production)
-against an offline GPU/ASIC adversary, replaces the overstated "astronomical" wording on KEK-id
-collisions with the honest birthday bound, and adds a pinned KAT suite anchored to RFC 9106 §A.3.
-No crypto-logic changes — AES-GCM wrap, Argon2id parameters, and memory zeroing are byte-for-byte
-identical to preview.1. Cloud KMS providers, external review, and `1.0` are next — the concrete
-plan is in [`future.md`](future.md).
+`1.0.0` — **first stable release.** The public API and the keyring/token wire formats are frozen;
+v1/v2/v3 keyrings all still import. No crypto-logic changes since `0.4.0-preview.2` (AES-256-GCM
+content-key wrap, Argon2id KEK derivation, HMAC-SHA256 keyring verifier, and memory zeroing are
+byte-for-byte identical) — 1.0 is the SemVer commitment plus a supply-chain fix (the EF Core sample
+moved to the patched SQLitePCLRaw 3.0.x to clear advisory GHSA-2m69-gcr7-jv3q; samples are not part
+of the shipped package).
+
+**Honest limitations carried into 1.0** (documented, not blockers — see
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md) and [`SECURITY.md`](SECURITY.md)):
+
+- The post-quantum property here is **symmetric-by-key-size only** (AES-256-GCM + Argon2id, ~128-bit
+  post-quantum strength under Grover). No ML-KEM / hybrid asymmetric KEM ships in this package.
+- **Not yet independently audited.** Written with care, KATs, hostile-input tests, and a published
+  threat model; a third-party review remains on the roadmap.
+- **Cloud KMS providers are an extension point**, not yet shipped as packages.
+
+The roadmap is in [`future.md`](future.md).
 
 ## Building from source
 
