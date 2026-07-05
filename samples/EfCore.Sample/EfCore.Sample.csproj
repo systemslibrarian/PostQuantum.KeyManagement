@@ -21,7 +21,7 @@
       SQLitePCLRaw 3.0.x, which the EF Core 10 line references. The explicit bundle pin guarantees the
       patched native SQLite regardless of the transitive graph. (Sample only — not shipped.)
     -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
   </ItemGroup>
