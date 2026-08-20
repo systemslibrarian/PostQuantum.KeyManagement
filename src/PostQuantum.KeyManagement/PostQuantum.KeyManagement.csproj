@@ -13,10 +13,10 @@
   <!-- ───────────────────────── NuGet package metadata ───────────────────────── -->
   <PropertyGroup>
     <PackageId>PostQuantum.KeyManagement</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <!-- AssemblyVersion stays 1.0.0.0 across the 1.x line so patches are binding-redirect-free drop-ins. -->
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.1.0</FileVersion>
+    <FileVersion>1.0.2.0</FileVersion>
     <Authors>Paul Clark</Authors>
     <Company>Systems Librarian</Company>
     <Product>PostQuantum.KeyManagement</Product>

@@ -4,6 +4,17 @@ All notable changes to `PostQuantum.KeyManagement` are recorded here. The format
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the library uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] — 2026-08-20
+
+Patch: dependency maintenance. No public API change and no behavioural change; a drop-in over 1.0.1.
+
+### Changed
+
+- Test and CI toolchain updated — `Microsoft.NET.Test.Sdk` 18.7.0, `xunit` 2.9.3,
+  `xunit.runner.visualstudio` 3.1.5, `Microsoft.SourceLink.GitHub` 10.0.300, the EfCore sample's
+  `Microsoft.EntityFrameworkCore.Sqlite` 10.0.11, and the GitHub Actions used by CI. SourceLink is
+  `PrivateAssets` and the sample is not packed, so none of these reach the published package.
+
 ## [1.0.1] — 2026-06-30
 
 Patch: defensive-copy hardening. No wire-format or public-API change; a drop-in over 1.0.0.
