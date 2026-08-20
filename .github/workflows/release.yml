@@ -1,0 +1,137 @@
+name: Release
+
+# Publishes PostQuantum.KeyManagement when a v* tag is pushed.
+#
+# This repository previously had no release automation at all -- only ci.yml, no secrets, and
+# nothing anywhere that pushed to NuGet -- so v1.0.0 and v1.0.1 were packed and pushed by hand.
+#
+# Everything here is designed so a consumer can independently verify what they installed:
+#   - the documented version must match the tag before anything is packed;
+#   - the full test suite runs on all three target frameworks before packing;
+#   - a build-provenance attestation is produced for the .nupkg (`gh attestation verify`);
+#   - the package is pushed via Trusted Publishing (short-lived OIDC token, no stored API key).
+#
+# ONE-TIME SETUP REQUIRED BEFORE THIS CAN PUBLISH:
+#   nuget.org -> account -> Trusted Publishing -> add a policy for
+#     package owner:     systemslibrarian
+#     repository owner:  systemslibrarian
+#     repository:        PostQuantum.KeyManagement
+#     workflow file:     release.yml
+#     environment:       (leave blank -- this workflow declares none)
+#     packages:          PostQuantum.KeyManagement
+#
+# Until that policy exists the NuGet/login step fails and nothing is pushed. Every step before it
+# still runs, so a tag pushed before setup produces a verifiable GitHub release without
+# publishing -- safe to retry once the policy is in place.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to attach the GitHub release to (e.g. v1.0.2). The package version comes from the .csproj regardless.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write      # create the GitHub release and upload assets
+  id-token: write      # OIDC token for NuGet Trusted Publishing + attestations
+  attestations: write  # build-provenance attestation for the package
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    name: Build, verify, pack, publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # SourceLink wants the full history
+
+      # Fail before anything is packed if the version documented to users has drifted from the tag.
+      # Scope is the user-facing surface: the packable project's <Version>, and every
+      # 'dotnet add package … --version' snippet in tracked Markdown. CHANGELOG.md is excluded --
+      # version mentions there are facts about earlier releases, not instructions.
+      - name: Verify documented versions match the release tag
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          echo "Release tag version: ${version}"
+          fail=0
+
+          while IFS= read -r csproj; do
+            declared="$(grep -oPm1 '(?<=<Version>)[^<]+' "$csproj" || true)"
+            if [ -n "$declared" ] && [ "$declared" != "$version" ]; then
+              echo "::error file=$csproj::<Version> is '$declared' but the release tag is '$version'"
+              fail=1
+            fi
+          done < <(git ls-files '*.csproj')
+
+          while IFS= read -r hit; do
+            file="${hit%%:*}"
+            pinned="$(printf '%s' "$hit" | grep -oP -- '--version \K[0-9][0-9A-Za-z.-]*')"
+            if [ "$pinned" != "$version" ]; then
+              echo "::error file=$file::install snippet pins '--version $pinned' but the release tag is '$version'"
+              fail=1
+            fi
+          done < <(git grep -nP -- '--version [0-9]' -- '*.md' ':!CHANGELOG.md' || true)
+
+          if [ "$fail" -ne 0 ]; then
+            echo "Version drift detected — sweep the docs to ${version} before tagging." >&2
+            exit 1
+          fi
+          echo "All project and documentation versions match ${version}."
+
+      - name: Set up .NET SDKs
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release, warnings = errors)
+        run: dotnet build --no-restore --configuration Release
+
+      # The suite runs on all three target frameworks. Nothing is packed from a failing run.
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+      - name: Pack
+        run: dotnet pack src/PostQuantum.KeyManagement/PostQuantum.KeyManagement.csproj -c Release --no-build -o artifacts
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: artifacts/*.nupkg
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          generate_release_notes: true
+          files: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+
+      # Trusted Publishing: exchanges the workflow's OIDC token for a short-lived NuGet API key.
+      # No NUGET_API_KEY secret is stored. Requires the one-time nuget.org policy in the header.
+      - name: Authenticate to NuGet (Trusted Publishing)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: systemslibrarian
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
